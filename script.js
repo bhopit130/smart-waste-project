@@ -1,4 +1,6 @@
-// --- CONFIGURATION ---
+// ==========================================
+// ⚙️ CONFIGURATION & SETUP
+// ==========================================
 const firebaseConfig = {
     apiKey: "AIzaSyA3UTjmzolQs5HHejpzfga0px6uxnADuSM", 
     authDomain: "smart-waste-deebuk.firebaseapp.com",
@@ -8,12 +10,16 @@ const firebaseConfig = {
     messagingSenderId: "11316279684",
     appId: "1:11316279684:web:5cee12dd58e7b5962c05d1"
 };
-const URL = "https://teachablemachine.withgoogle.com/models/zn21Zj9KC/";
 
-// --- INIT ---
+// 🔴🔴 ใส่ GROQ API KEY ของคุณที่นี่ 🔴🔴
+// ขอฟรีได้ที่ https://console.groq.com/keys
+const GROQ_API_KEY = "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"; 
+
+// --- INIT FIREBASE ---
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 const db = firebase.database();
 
+// --- VARIABLES ---
 let currentLang = 'en';
 let isSoundOn = true;
 let userData = { score: 0, firstName: "", lastName: "", username: "", password: "", profilePic: "" };
@@ -22,106 +28,22 @@ let isRegisterMode = false;
 let tempProfilePic = "";
 
 // Camera Variables
-let model, webcam, maxPredictions, isRunning = false, animationId;
+let webcam, isRunning = false, animationId;
 let useBackCamera = true; 
 
-// Text Data (พร้อมเกร็ดความรู้แบบสุ่ม)
+// Text Data
 const textData = {
     en: {
         appName: "Smart Waste<br>Classifier",
         auth: { title: "Welcome Back", sub: "Sign in to continue", regTitle: "Create Account", regSub: "Join us today" },
         btnStart: "START CAMERA", btnScan: "SCAN OBJECT", loading: "Opening Camera...",
-        classes: {
-            "ขยะรีไซเคิล": { 
-                title: "Recyclable", bin: "Yellow Bin", xp: 10, speech: "Recyclable. Yellow bin.", desc: "Bottles, Glass, Cans", 
-                knowledge: [
-                    "Recycling one can saves energy for 3 hours of TV!",
-                    "Glass can be recycled endlessly without losing quality.",
-                    "Recycling paper saves trees and water.",
-                    "Plastic bottles take 450 years to decompose!"
-                ], 
-                howTo: "Empty, rinse, flatten.", type: "yellow" 
-            },
-            "ขยะอินทรีย์": { 
-                title: "Organic", bin: "Green Bin", xp: 5, speech: "Organic. Green bin.", desc: "Food scraps, Peels", 
-                knowledge: [
-                    "Composting reduces landfill methane.",
-                    "Organic waste makes great natural fertilizer.",
-                    "Over 50% of household waste is organic.",
-                    "Fruit peels break down in just a few weeks."
-                ], 
-                howTo: "Drain water. No plastic.", type: "green" 
-            },
-            "ขยะอันตราย": { 
-                title: "Hazardous", bin: "Red Bin", xp: 5, speech: "Hazardous! Red bin.", desc: "Batteries, Spray cans", 
-                knowledge: [
-                    "Never burn hazardous waste.",
-                    "One battery can pollute 600,000 liters of water!",
-                    "E-waste contains gold, silver, and toxic metals.",
-                    "Keep separate from other trash for safety."
-                ], 
-                howTo: "Separate bag. Don't break.", type: "red" 
-            },
-            "ขยะทั่วไป": { 
-                title: "General", bin: "Blue Bin", xp: 1, speech: "General. Blue bin.", desc: "Wrappers, Tissues", 
-                knowledge: [
-                    "Takes 450 years to decompose.",
-                    "Reduce usage is better than throwing away.",
-                    "Foam boxes take 500+ years to break down.",
-                    "Dirty plastic cannot be recycled."
-                ], 
-                howTo: "Tie bag tightly.", type: "blue" 
-            },
-            "พื้นหลัง": { title: "", xp: 0 }
-        }
+        analyzing: "Analyzing..."
     },
     th: {
         appName: "นักแยกขยะ<br>อัจฉริยะ",
         auth: { title: "ยินดีต้อนรับ", sub: "เข้าสู่ระบบเพื่อใช้งาน", regTitle: "สมัครสมาชิก", regSub: "สร้างบัญชีใหม่" },
         btnStart: "เริ่มเปิดกล้อง", btnScan: "กดเพื่อสแกน", loading: "กำลังเปิดกล้อง...",
-        classes: {
-            "ขยะรีไซเคิล": { 
-                title: "ขยะรีไซเคิล", bin: "ถังเหลือง", xp: 10, speech: "ขยะรีไซเคิล ถังเหลืองค่ะ", desc: "ขวด, แก้ว, กระป๋อง", 
-                knowledge: [
-                    "ขวดพลาสติกแปลงเป็นเสื้อกีฬาได้นะ!",
-                    "รีไซเคิลกระป๋อง 1 ใบ ประหยัดไฟดูทีวีได้ 3 ชม.",
-                    "แก้วรีไซเคิลได้ 100% ไม่รู้จบ",
-                    "กระดาษ 1 ตัน ช่วยชีวิตต้นไม้ได้ 17 ต้น"
-                ], 
-                howTo: "เทน้ำ ล้าง บีบให้แบน", type: "yellow" 
-            },
-            "ขยะอินทรีย์": { 
-                title: "ขยะอินทรีย์", bin: "ถังเขียว", xp: 5, speech: "ขยะอินทรีย์ ถังเขียวค่ะ", desc: "เศษอาหาร, เปลือกผลไม้", 
-                knowledge: [
-                    "หมักทำปุ๋ยช่วยลดโลกร้อนได้",
-                    "ขยะอินทรีย์มีปริมาณมากที่สุดในบ้าน",
-                    "เปลือกผลไม้ย่อยสลายเป็นปุ๋ยชั้นดี",
-                    "เศษอาหารช่วยบำรุงดินได้นะ"
-                ], 
-                howTo: "กรองน้ำออก ห้ามทิ้งถุง", type: "green" 
-            },
-            "ขยะอันตราย": { 
-                title: "ขยะอันตราย", bin: "ถังแดง", xp: 5, speech: "ขยะอันตราย ระวังด้วยค่ะ", desc: "ถ่าน, หลอดไฟ, สเปรย์", 
-                knowledge: [
-                    "สารเคมีจากถ่าน 1 ก้อนทำน้ำเสีย 6 แสนลิตร",
-                    "ห้ามเผาเด็ดขาด เพราะเกิดควันพิษ",
-                    "ขยะอิเล็กทรอนิกส์มีทองคำซ่อนอยู่ด้วยนะ",
-                    "แยกทิ้งต่างหาก ปลอดภัยต่อคนเก็บ"
-                ], 
-                howTo: "แยกใส่ถุง เขียนบอกไว้", type: "red" 
-            },
-            "ขยะทั่วไป": { 
-                title: "ขยะทั่วไป", bin: "ถังน้ำเงิน", xp: 1, speech: "ขยะทั่วไป ถังน้ำเงินค่ะ", desc: "ซองขนม, ทิชชู่", 
-                knowledge: [
-                    "ย่อยสลายยาก ลดการใช้ดีกว่า",
-                    "กล่องโฟมใช้เวลาย่อยสลาย 500 ปี!",
-                    "ทิชชู่เปื้อนไม่นับเป็นขยะรีไซเคิล",
-                    "ถุงพลาสติกเปื้อนแกง ต้องทิ้งถังนี้"
-                ], 
-                howTo: "มัดปากถุงให้แน่น", type: "blue" 
-            },
-            "พื้นหลัง": { title: "", xp: 0 }
-        }
+        analyzing: "กำลังวิเคราะห์..."
     }
 };
 
@@ -137,7 +59,9 @@ const RANK_SYSTEM = [
     { name: "Eco Legend", minScore: 5000, class: "rank-legend" }     
 ];
 
-// --- AUTH SYSTEM ---
+// ==========================================
+// 🔐 AUTH SYSTEM
+// ==========================================
 function toggleAuthMode() {
     isRegisterMode = !isRegisterMode;
     updateAuthText();
@@ -308,7 +232,7 @@ function showLevelUpModal(rankName) {
     modal.style.display = 'flex';
     
     if(isSoundOn) {
-        const audio = new Audio('https://actions.google.com/sounds/v1/cartoon/clank_car_crash.ogg'); 
+        // Optional sound code here
     }
 
     for(let i=0; i<50; i++) {
@@ -340,21 +264,14 @@ function toggleSound() {
 }
 
 // ==========================================
-// 🟢 SECTION: CAMERA LOGIC (FULL FIX)
+// 📷 SECTION: CAMERA LOGIC
 // ==========================================
-
-async function initModel() {
-    if(!model) {
-        model = await tmImage.load(URL + "model.json", URL + "metadata.json");
-        maxPredictions = model.getTotalClasses();
-    }
-}
 
 async function handleMainButton() {
     if (!isRunning) {
         startCamera();
     } else {
-        manualPredict();
+        captureAndAnalyzeWithGroq(); // 🚀 เรียกใช้ AI Groq
     }
 }
 
@@ -367,16 +284,12 @@ async function startCamera() {
     txtBtn.innerText = textData[currentLang].loading;
 
     try {
-        await initModel();
-
         if (webcam && webcam.canvas) { 
             webcam.stop(); 
             webcam = null; 
         }
         container.innerHTML = ""; 
 
-        // 🟢 FULL FIX: สั่งขนาดเป็นสี่เหลี่ยมจัตุรัสเพื่อให้ CSS ตัดขอบรอบๆ
-        // เป็นการบังคับ Zoom In (1.0x) โดยอัตโนมัติ
         const size = 600; 
         const flip = !useBackCamera; 
         
@@ -395,7 +308,6 @@ async function startCamera() {
 
         await webcam.play();
         
-        // 🟢 บังคับสไตล์ CSS ให้ Canvas ขยายเต็มกรอบ
         webcam.canvas.style.width = "100%";
         webcam.canvas.style.height = "100%";
         webcam.canvas.style.objectFit = "cover";
@@ -461,69 +373,195 @@ async function loop() {
     }
 }
 
-async function manualPredict() {
-    if(model && webcam && webcam.canvas) {
-        const scanLine = document.getElementById('scan-line');
-        scanLine.style.display = 'block';
-        scanLine.style.animation = 'none';
-        scanLine.offsetHeight; 
-        scanLine.style.animation = 'scan 1s linear infinite';
-        
-        const prediction = await model.predict(webcam.canvas);
-        let highest = 0, best = "";
-        prediction.forEach(p => { if(p.probability > highest) { highest = p.probability; best = p.className; } });
-        
-        setTimeout(() => { scanLine.style.display = 'none'; }, 300);
+// ==========================================
+// 🚀 AI SECTION: GROQ (Llama 4 Scout Vision)
+// ==========================================
 
-        if(highest > 0.85 && best !== "พื้นหลัง") {
-            showResultPopup(best);
-        } else {
-            alert(currentLang === 'en' ? "No object detected. Try moving closer." : "ไม่พบวัตถุ ลองขยับเข้าไปใกล้ๆ ครับ");
+async function captureAndAnalyzeWithGroq() {
+    if (!webcam || !webcam.canvas) return;
+
+    if (!GROQ_API_KEY || GROQ_API_KEY.includes("YOUR_GROQ")) {
+        alert("Please set your GROQ_API_KEY in script.js first!");
+        return;
+    }
+
+    const btn = document.getElementById('btn-main');
+    const originalText = btn.innerHTML;
+    
+    // UI: Loading
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${textData[currentLang].analyzing}`;
+    
+    const scanLine = document.getElementById('scan-line');
+    scanLine.style.display = 'block';
+
+    try {
+        // 1. จับภาพ
+        const imageBase64 = webcam.canvas.toDataURL("image/jpeg", 0.7);
+
+        // 2. ส่งไปถาม Groq API
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${GROQ_API_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "meta-llama/llama-4-scout-17b-16e-instruct", 
+                messages: [
+                    {
+                        role: "user",
+                        content: [
+                            {
+                                type: "text",
+                                // 🟢 Prompt: ระบุกฎสีถังขยะของไทยให้ชัดเจน
+                                text: `Identify the waste object in this image.
+                                Classify it STRICTLY based on Thai waste sorting rules:
+
+                                1. "Recyclable" (Yellow Bin): Clean plastic bottles, glass, metal cans, paper, cardboard.
+                                2. "Organic" (Green Bin): Food scraps, fruit peels, leaves, biodegradable waste.
+                                3. "Hazardous" (Red Bin): Batteries, electronics (e-waste), light bulbs, chemicals, medicine containers.
+                                4. "General" (Blue Bin): Dirty plastic bags, snack wrappers, foam, tissues, wooden sticks, toothpaste tubes, candy wrappers, foil bags.
+
+                                Return JSON ONLY with this structure:
+                                {
+                                  "category": "Recyclable" OR "Organic" OR "Hazardous" OR "General",
+                                  "name_en": "Short name in English",
+                                  "name_th": "Short name in Thai",
+                                  "desc_en": "Brief description in English",
+                                  "desc_th": "Brief description in Thai",
+                                  "howto_en": "How to dispose in English",
+                                  "howto_th": "How to dispose in Thai",
+                                  "knowledge_en": "One fun fact in English",
+                                  "knowledge_th": "One fun fact in Thai"
+                                }
+                                If no waste is found, set category to "Unknown".
+                                Do not include markdown code blocks.`
+                            },
+                            {
+                                type: "image_url",
+                                image_url: { url: imageBase64 }
+                            }
+                        ]
+                    }
+                ],
+                temperature: 0.1,
+                max_tokens: 500,
+                response_format: { type: "json_object" }
+            })
+        });
+
+        const json = await response.json();
+        
+        if (json.error) {
+            throw new Error(json.error.message);
         }
+
+        const aiContent = json.choices[0].message.content;
+        const resultData = JSON.parse(aiContent);
+
+        scanLine.style.display = 'none';
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+
+        if (resultData.category === "Unknown") {
+            alert(currentLang === 'en' ? "No waste detected. Try closer." : "ไม่พบขยะในภาพ ลองขยับเข้ามาใกล้ๆ ครับ");
+        } else {
+            showResultPopupFromAI(resultData);
+        }
+
+    } catch (error) {
+        console.error("AI Error:", error);
+        scanLine.style.display = 'none';
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        alert("AI Error: " + error.message);
     }
 }
 
-function showResultPopup(className) {
-    const data = textData[currentLang].classes[className];
+// ==========================================
+// 🛠️ DISPLAY RESULT (AUTO MAPPING FIX)
+// ==========================================
+
+function showResultPopupFromAI(aiData) {
     const card = document.getElementById('modal-card-content');
     
+    // 🟢 Master Config: บังคับคะแนนและสีถังตามประเภทที่ AI ส่งมา
+    const wasteStandards = {
+        "Recyclable": {
+            xp: 10,
+            colorClass: "theme-yellow",
+            icon: "bi-recycle",
+            binNameEN: "Yellow Bin (Recycle)",
+            binNameTH: "ถังเหลือง (รีไซเคิล)"
+        },
+        "Organic": {
+            xp: 5,
+            colorClass: "theme-green",
+            icon: "bi-flower1",
+            binNameEN: "Green Bin (Organic)",
+            binNameTH: "ถังเขียว (อินทรีย์)"
+        },
+        "Hazardous": {
+            xp: 15,
+            colorClass: "theme-red",
+            icon: "bi-exclamation-triangle-fill",
+            binNameEN: "Red Bin (Hazardous)",
+            binNameTH: "ถังแดง (อันตราย)"
+        },
+        "General": {
+            xp: 2,
+            colorClass: "theme-blue",
+            icon: "bi-trash3-fill",
+            binNameEN: "Blue Bin (General)",
+            binNameTH: "ถังน้ำเงิน (ทั่วไป)"
+        },
+        "Unknown": {
+            xp: 0,
+            colorClass: "theme-blue",
+            icon: "bi-question-circle",
+            binNameEN: "Unknown Bin",
+            binNameTH: "ไม่ทราบประเภท"
+        }
+    };
+
+    // ตรวจสอบว่า AI ส่ง category มาตรงไหม ถ้าไม่ตรงให้ปัดเป็น General
+    const category = wasteStandards[aiData.category] ? aiData.category : "General";
+    const info = wasteStandards[category];
+
+    // Reset Theme
     card.classList.remove('theme-yellow', 'theme-green', 'theme-red', 'theme-blue');
-    if(data.type === "yellow") card.classList.add('theme-yellow');
-    else if(data.type === "green") card.classList.add('theme-green');
-    else if(data.type === "red") card.classList.add('theme-red');
-    else if(data.type === "blue") card.classList.add('theme-blue');
+    card.classList.add(info.colorClass);
 
-    document.getElementById('res-xp').innerText = "+" + data.xp + " XP";
-    document.getElementById('res-title').innerText = data.title;
-    document.getElementById('res-bin').innerText = data.bin;
-    document.getElementById('res-desc').innerText = data.desc;
-
-    // 🟢 RANDOM KNOWLEDGE: สุ่มความรู้ 1 ข้อ
-    let knowledgeText = "";
-    if (Array.isArray(data.knowledge)) {
-        const randomIndex = Math.floor(Math.random() * data.knowledge.length);
-        knowledgeText = data.knowledge[randomIndex];
-    } else {
-        knowledgeText = data.knowledge; // เผื่อกรณีเป็น String ธรรมดา
-    }
-    document.getElementById('res-knowledge').innerText = knowledgeText;
-
-    document.getElementById('res-howto').innerText = data.howTo;
+    // Update Text Data
+    document.getElementById('res-xp').innerText = "+" + info.xp + " XP";
     
-    const iconMap = { "ขยะรีไซเคิล": "bi-recycle", "ขยะอินทรีย์": "bi-flower1", "ขยะอันตราย": "bi-exclamation-triangle-fill", "ขยะทั่วไป": "bi-trash3-fill" };
-    document.getElementById('res-icon').className = `bi ${iconMap[className] || 'bi-question'}`;
+    const isTH = currentLang === 'th';
+    document.getElementById('res-title').innerText = isTH ? aiData.name_th : aiData.name_en;
+    document.getElementById('res-bin').innerText = isTH ? info.binNameTH : info.binNameEN; // ใช้ชื่อถังจาก Config เราเอง
+    document.getElementById('res-desc').innerText = isTH ? aiData.desc_th : aiData.desc_en;
+    document.getElementById('res-knowledge').innerText = isTH ? aiData.knowledge_th : aiData.knowledge_en;
+    document.getElementById('res-howto').innerText = isTH ? aiData.howto_th : aiData.howto_en;
+    
+    document.getElementById('res-icon').className = `bi ${info.icon}`;
 
     document.getElementById('result-modal').style.display = "flex";
     
+    // Speak
     if(isSoundOn) {
-        const u = new SpeechSynthesisUtterance(data.speech);
-        u.lang = (currentLang === 'th') ? 'th-TH' : 'en-US';
+        const binText = isTH ? info.binNameTH : info.binNameEN;
+        const itemText = isTH ? aiData.name_th : aiData.name_en;
+        const textToSpeak = `${itemText}. ${binText}`;
+        const u = new SpeechSynthesisUtterance(textToSpeak);
+        u.lang = isTH ? 'th-TH' : 'en-US';
         window.speechSynthesis.speak(u);
     }
     
-    // Update Score
-    userData.score = (userData.score || 0) + data.xp;
-    db.ref('users/' + userId).update({ score: userData.score });
+    // Save Score
+    userData.score = (userData.score || 0) + info.xp;
+    if(userId) {
+        db.ref('users/' + userId).update({ score: userData.score });
+    }
     
     updateUI(true); 
 }
