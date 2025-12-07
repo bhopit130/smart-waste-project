@@ -1,0 +1,174 @@
+/* --- GLOBAL & FONTS --- */
+:root {
+    --primary: #4361ee; --secondary: #3f37c9; --accent: #4cc9f0;
+    --success: #06d6a0; --danger: #ef476f; --warning: #ffc107; --dark: #2b2d42; --light: #f8f9fa;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+    font-family: 'Poppins', 'Prompt', sans-serif;
+    background: #f0f2f5; margin: 0; padding: 0;
+    min-height: 100vh; display: flex; justify-content: center; align-items: center;
+}
+
+/* --- ANIMATED BACKGROUND --- */
+.animated-bg {
+    background: linear-gradient(-45deg, #4361ee, #3f37c9, #4cc9f0, #7209b7);
+    background-size: 400% 400%; animation: gradientBG 15s ease infinite;
+}
+@keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+/* --- CONTAINER --- */
+.app-container {
+    width: 100%; max-width: 450px; height: 100vh;
+    background: #fff; position: relative; display: flex; flex-direction: column;
+    box-shadow: 0 0 50px rgba(0,0,0,0.1);
+}
+@media (min-width: 768px) { .app-container { height: 90vh; border-radius: 30px; overflow: hidden; } }
+
+/* --- HEADER --- */
+.top-header {
+    padding: 20px 25px 30px; display: flex; justify-content: space-between; align-items: center;
+    background: #fff; border-radius: 0 0 30px 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); z-index: 10; position: relative;
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.logo-circle img { width: 45px; height: 45px; border-radius: 12px; object-fit: cover; }
+.text-group h1 { font-size: 1.1rem; font-weight: 700; margin: 0; line-height: 1; color: var(--primary); }
+.badge-live { font-size: 0.65rem; color: var(--success); font-weight: 600; text-transform: uppercase; }
+
+.profile-pill {
+    display: flex; align-items: center; gap: 10px;
+    background: #f1f3f5; padding: 5px 15px 5px 5px; border-radius: 50px; cursor: pointer; transition: 0.2s;
+}
+.profile-pill:active { transform: scale(0.95); }
+.profile-pill img { width: 35px; height: 35px; border-radius: 50%; border: 2px solid #fff; object-fit: cover; }
+.xp-info { display: flex; flex-direction: column; line-height: 1; text-align: left;}
+#display-name { font-size: 0.8rem; font-weight: 700; max-width: 80px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--dark);}
+.rank-badge { font-size: 0.65rem; color: var(--primary); font-weight: 600; background: rgba(67, 97, 238, 0.1); padding: 2px 6px; border-radius: 8px; margin-top: 2px; display: inline-block; }
+
+/* --- LOGIN SCREEN --- */
+.login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2000; display: flex; justify-content: center; align-items: center; }
+.login-box {
+    background: rgba(255, 255, 255, 0.95); padding: 40px 30px; border-radius: 30px; 
+    width: 85%; max-width: 350px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); backdrop-filter: blur(10px);
+}
+.app-title-login { font-size: 1.8rem; font-weight: 800; color: var(--primary); margin: 0 0 10px; line-height: 1.1; }
+.login-logo img { width: 60px; height: 60px; border-radius: 15px; margin-bottom: 10px; box-shadow: 0 5px 15px rgba(67, 97, 238, 0.2); }
+#auth-title { margin: 10px 0 5px; color: var(--dark); font-size: 1.2rem; }
+#auth-subtitle { margin: 0 0 25px; color: #888; font-size: 0.9rem; }
+.lang-float-btn {
+    position: absolute; top: 20px; right: 20px;
+    background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5);
+    color: white; padding: 5px 15px; border-radius: 20px; cursor: pointer; font-weight: bold;
+    backdrop-filter: blur(5px); transition: 0.2s;
+}
+.lang-float-btn:hover { background: rgba(255,255,255,0.4); }
+.modern-input { width: 100%; padding: 12px 15px; border: 2px solid #eee; border-radius: 12px; margin-bottom: 15px; outline: none; transition: 0.3s; font-size: 0.95rem; }
+.modern-input:focus { border-color: var(--primary); background: #fff; }
+.btn-gradient { width: 100%; padding: 12px; border: none; border-radius: 12px; background: linear-gradient(90deg, var(--primary), var(--accent)); color: white; font-weight: 700; font-size: 1rem; cursor: pointer; box-shadow: 0 5px 20px rgba(67, 97, 238, 0.4); margin-top: 5px; }
+.auth-toggle { margin-top: 20px; font-size: 0.85rem; cursor: pointer; color: #666; }
+.auth-toggle b { color: var(--primary); }
+.error-text { color: var(--danger); font-size: 0.8rem; margin-top: 10px; min-height: 15px; }
+
+/* --- PROFILE UPLOAD --- */
+.profile-upload-circle { width: 90px; height: 90px; margin: 0 auto; position: relative; cursor: pointer; }
+.profile-upload-circle img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary); background: #eee; }
+.cam-icon { position: absolute; bottom: 0; right: 0; background: var(--primary); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 2px solid white; font-size: 0.8rem; }
+.settings-card { padding: 25px; text-align: center; }
+.btn-danger-outline { width: 100%; padding: 12px; border: 2px solid var(--danger); border-radius: 12px; background: transparent; color: var(--danger); font-weight: 700; margin-top: 10px; cursor: pointer; }
+
+/* --- CAMERA STAGE (FIXED) --- */
+.camera-stage { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
+
+/* 🟢 กรอบกล้องแนวตั้ง 3:4 */
+.camera-wrapper { 
+    width: 100%; 
+    aspect-ratio: 3/4; 
+    background: #000; 
+    border-radius: 20px; 
+    overflow: hidden; 
+    position: relative; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+    z-index: 1;
+}
+
+#webcam-container {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* 🟢 บังคับ Canvas ให้เต็มจอและ Crop ตรงกลาง (Zoom 1.0x Effect) */
+#webcam-container canvas { 
+    width: 100% !important; 
+    height: 100% !important; 
+    object-fit: cover !important; 
+    display: block;
+}
+
+.placeholder-content { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: rgba(255,255,255,0.5); background: #222; }
+.placeholder-content i { font-size: 3rem; margin-bottom: 10px; }
+.controls-area { display: flex; flex-direction: column; gap: 15px; margin-top: auto;}
+.tools-row { display: flex; justify-content: flex-end; gap: 10px; }
+.icon-btn { width: 40px; height: 40px; border-radius: 12px; border: none; background: #f1f3f5; color: #666; font-size: 1rem; cursor: pointer; }
+.icon-btn.active { background: var(--primary); color: #fff; }
+.btn-main-action { width: 100%; padding: 18px; border-radius: 18px; border: none; background: var(--primary); color: #fff; font-size: 1.1rem; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 10px; cursor: pointer; box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3); }
+.btn-main-action.stop { background: var(--danger); box-shadow: 0 5px 15px rgba(239, 71, 111, 0.3); }
+.scan-laser { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, transparent, rgba(67, 97, 238, 0.5), transparent); animation: scanMove 2s linear infinite; display: none; pointer-events: none; z-index: 5; }
+@keyframes scanMove { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+
+.score-display-big { text-align: center; font-size: 3rem; font-weight: 800; color: var(--primary); line-height: 1; }
+.score-display-big small { font-size: 1rem; color: #888; font-weight: 600; }
+
+/* Result Modal & Themes */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 1000; display: none; justify-content: center; align-items: flex-end; }
+@media (min-width: 768px) { .modal-overlay { align-items: center; } }
+.modal-card { background: #fff; width: 100%; max-width: 450px; border-radius: 30px 30px 0 0; padding: 30px; text-align: center; animation: slideUp 0.3s ease; border-top: 8px solid var(--primary); }
+@media (min-width: 768px) { .modal-card { border-radius: 30px; } }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.theme-yellow { border-color: var(--warning) !important; }
+.theme-yellow .xp-badge-lg { background: var(--warning); color: #000; }
+.theme-yellow .result-icon-wrapper { color: var(--warning); }
+.theme-yellow .howto-box { background: var(--warning); color: #000; }
+
+.theme-green { border-color: var(--success) !important; }
+.theme-green .xp-badge-lg { background: var(--success); color: #fff; }
+.theme-green .result-icon-wrapper { color: var(--success); }
+.theme-green .howto-box { background: var(--success); }
+
+.theme-red { border-color: var(--danger) !important; }
+.theme-red .xp-badge-lg { background: var(--danger); color: #fff; }
+.theme-red .result-icon-wrapper { color: var(--danger); }
+.theme-red .howto-box { background: var(--danger); }
+
+.theme-blue { border-color: var(--primary) !important; }
+.theme-blue .xp-badge-lg { background: var(--primary); color: #fff; }
+.theme-blue .result-icon-wrapper { color: var(--primary); }
+.theme-blue .howto-box { background: var(--primary); }
+
+.xp-badge-lg { font-weight: 800; padding: 5px 15px; border-radius: 20px; display: inline-block; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+.result-icon-wrapper { font-size: 4rem; margin-bottom: 10px; }
+.knowledge-box { background: #f8f9fa; border-left: 4px solid #888; padding: 15px; border-radius: 12px; text-align: left; margin: 15px 0; font-size: 0.85rem; }
+.howto-box { color: white; padding: 12px; border-radius: 12px; font-weight: 600; font-size: 0.9rem; }
+.btn-continue { width: 100%; padding: 15px; border: none; border-radius: 15px; background: var(--dark); color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
+
+/* Level Up & Rank */
+.rank-badge { font-weight: 700; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; letter-spacing: 0.5px; }
+.rank-novice { background: #e9ecef; color: #6c757d; }
+.rank-scout { background: #d0ebff; color: #1971c2; }
+.rank-ranger { background: #d3f9d8; color: #2b8a3e; }
+.rank-hero { background: #fff3bf; color: #f08c00; }
+.rank-warrior { background: #ffe3e3; color: #e03131; }
+.rank-guardian { background: #eebefa; color: #9c36b5; }
+.rank-master { background: #343a40; color: #ffd43b; border: 1px solid #ffd43b; }
+.rank-legend { background: linear-gradient(45deg, #FFD700, #FDB931, #FFD700); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.3); box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+
+.levelup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(8px); }
+.levelup-card { background: white; width: 85%; max-width: 350px; padding: 30px; border-radius: 30px; text-align: center; animation: popIn 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55); position: relative; overflow: hidden; }
+.levelup-header { font-size: 1.5rem; font-weight: 800; background: -webkit-linear-gradient(45deg, #FFD700, #FDB931); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px; }
+.levelup-rank { font-size: 2rem; font-weight: 900; color: #4361ee; margin: 15px 0; text-transform: uppercase; }
+.btn-claim { background: linear-gradient(90deg, #4361ee, #3a0ca3); color: white; border: none; padding: 12px 30px; border-radius: 50px; font-weight: bold; margin-top: 15px; cursor: pointer; box-shadow: 0 5px 15px rgba(67, 97, 238, 0.4); }
+.confetti { position: absolute; width: 10px; height: 10px; background-color: #f00; animation: fall linear forwards; }
+@keyframes fall { to { transform: translateY(100vh) rotate(720deg); } }

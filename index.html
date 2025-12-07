@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#4361ee">
+    <title>Smart Waste Classifier</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="login-overlay animated-bg" id="login-screen">
+        <button class="lang-float-btn" onclick="toggleLanguage()" id="login-lang-btn">EN</button>
+        <div class="login-box glass-effect">
+            <div class="login-logo">
+                <img src="Logo.png" onerror="this.src='https://placehold.co/80x80/eee/999?text=DB'">
+            </div>
+            <h1 class="app-title-login">Smart Waste<br>Classifier</h1>
+            <h2 id="auth-title">Welcome Back</h2>
+            <p id="auth-subtitle">Sign in to continue</p>
+            
+            <div id="reg-pic-container" style="display:none; margin-bottom:15px;">
+                <div class="profile-upload-circle" onclick="document.getElementById('reg-file-input').click()">
+                    <img id="reg-preview" src="https://placehold.co/100x100/eee/999?text=Upload">
+                    <div class="cam-icon"><i class="bi bi-camera-fill"></i></div>
+                </div>
+                <input type="file" id="reg-file-input" hidden accept="image/*" onchange="handleImageUpload(this, 'reg-preview')">
+                <div style="font-size:0.7rem; color:#666; margin-top:5px;">(Optional) Tap to upload photo</div>
+            </div>
+
+            <div id="register-names" style="display:none;">
+                <input type="text" id="reg-firstname" class="modern-input" placeholder="First Name">
+                <input type="text" id="reg-lastname" class="modern-input" placeholder="Last Name">
+            </div>
+
+            <input type="text" id="username-input" class="modern-input" placeholder="Username">
+            <input type="password" id="password-input" class="modern-input" placeholder="Password">
+            
+            <button class="btn-gradient" onclick="handleAuthAction()" id="btn-auth">LOGIN</button>
+            <p id="auth-error" class="error-text"></p>
+
+            <div class="auth-toggle" onclick="toggleAuthMode()">
+                <span id="toggle-text">Don't have an account? <b>Register</b></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container">
+        
+        <header class="top-header">
+            <div class="brand">
+                <div class="logo-circle">
+                    <img src="Logo.png" alt="Logo">
+                </div>
+                <div class="text-group">
+                    <h1>Smart Waste</h1>
+                    <span class="badge-live">● Online System</span>
+                </div>
+            </div>
+            <div class="profile-pill" onclick="openProfileSettings()">
+                <img src="https://placehold.co/100x100/eee/999?text=U" id="topbar-img">
+                <div class="xp-info">
+                    <span id="display-name">Guest</span>
+                    <span class="rank-badge" id="user-rank">Beginner</span> 
+                    <span class="xp-val" id="score-val" style="display:none;">0 XP</span> 
+                </div>
+            </div>
+        </header>
+
+        <main class="camera-stage">
+            <div class="camera-wrapper">
+                <div id="webcam-container">
+                    <div id="placeholder-ui" class="placeholder-content">
+                        <div class="pulse-ring"></div>
+                        <i class="bi bi-camera-video-fill"></i>
+                        <p id="txt-placeholder">Ready to Scan</p>
+                    </div>
+                </div>
+                <div class="scan-laser" id="scan-line" style="display:none;"></div>
+            </div>
+
+            <div class="score-display-big">
+                <span id="big-score-val">0</span> <small>XP</small>
+            </div>
+
+            <div class="controls-area">
+                <div class="tools-row">
+                    <button class="icon-btn" onclick="toggleLanguage()" id="btn-lang">EN</button>
+                    <button class="icon-btn active" onclick="toggleSound()" id="btn-sound"><i class="bi bi-volume-up-fill"></i></button>
+                    <button class="icon-btn" onclick="switchCameraMode()" id="btn-switch-cam"><i class="bi bi-arrow-repeat"></i></button>
+                    
+                    <button class="icon-btn danger-btn" onclick="stopScanning()" id="btn-stop-cam" style="display:none; color: #ef476f; border-color: #ef476f;">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                
+                <button class="btn-main-action" onclick="handleMainButton()" id="btn-main">
+                    <i class="bi bi-camera-fill"></i> <span id="txt-btn-start">START CAMERA</span>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="result-modal">
+<div class="levelup-overlay" id="levelup-modal">
+        <div class="levelup-card">
+            <div class="levelup-header">LEVEL UP!</div>
+            <img src="https://cdn-icons-png.flaticon.com/512/616/616490.png" width="80" alt="Trophy">
+            <p>Congratulations! You are now a</p>
+            <div class="levelup-rank" id="lvl-rank-name">Eco Hero</div>
+            <button class="btn-claim" onclick="closeLevelUpModal()">AWESOME!</button>
+        </div>
+    </div>
+        <div class="modal-card" id="modal-card-content">
+            <div class="modal-header"><div class="xp-badge-lg" id="res-xp">+10 XP</div></div>
+            <div class="modal-body">
+                <div class="result-icon-wrapper"><i id="res-icon" class="bi bi-recycle"></i></div>
+                <h2 id="res-title">Recyclable</h2>
+                <h4 id="res-bin">Yellow Bin</h4>
+                <p id="res-desc" class="desc-text">...</p>
+                <div class="knowledge-box">
+                    <div class="k-title"><i class="bi bi-lightbulb-fill"></i> Did you know?</div>
+                    <p id="res-knowledge">...</p>
+                </div>
+                <div class="howto-box"><i class="bi bi-check-circle-fill"></i> <span id="res-howto">...</span></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-continue" onclick="closeResultModal()">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="settings-modal" style="align-items: center;">
+        <div class="modal-card settings-card">
+            <div style="text-align: right;"><button onclick="closeProfileSettings()" style="background:none;border:none;font-size:1.5rem;">&times;</button></div>
+            <h3>Edit Profile</h3>
+            <div class="profile-upload-circle" onclick="document.getElementById('edit-file-input').click()" style="margin: 0 auto 20px;">
+                <img id="edit-preview" src="">
+                <div class="cam-icon"><i class="bi bi-pencil-fill"></i></div>
+            </div>
+            <input type="file" id="edit-file-input" hidden accept="image/*" onchange="handleImageUpload(this, 'edit-preview')">
+            <input type="text" id="edit-firstname" class="modern-input" placeholder="First Name">
+            <input type="text" id="edit-lastname" class="modern-input" placeholder="Last Name">
+            <input type="password" id="edit-password" class="modern-input" placeholder="New Password">
+            <button class="btn-gradient" onclick="saveProfileChanges()">Save Changes</button>
+            <button class="btn-danger-outline" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
