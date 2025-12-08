@@ -11,8 +11,7 @@ const firebaseConfig = {
     appId: "1:11316279684:web:5cee12dd58e7b5962c05d1"
 };
 
-// 🔴🔴 ใส่ GROQ API KEY ของคุณที่นี่ 🔴🔴
-// ขอฟรีได้ที่ https://console.groq.com/keys
+// 🔴🔴 ใส่ API KEY ของคุณที่นี่ (gsk_...) 🔴🔴
 const GROQ_API_KEY = "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"; 
 
 // --- INIT FIREBASE ---
@@ -22,7 +21,8 @@ const db = firebase.database();
 // --- VARIABLES ---
 let currentLang = 'en';
 let isSoundOn = true;
-let userData = { score: 0, firstName: "", lastName: "", username: "", password: "", profilePic: "" };
+// userData structure updated: activeXpBuff & activeLuckBuff (แยกกัน)
+let userData = { score: 0, firstName: "", lastName: "", username: "", password: "", profilePic: "", inventory: [], activeXpBuff: null, activeLuckBuff: null };
 let userId = "";
 let isRegisterMode = false;
 let tempProfilePic = "";
@@ -47,7 +47,6 @@ const textData = {
     }
 };
 
-// --- RANK SYSTEM CONFIG ---
 const RANK_SYSTEM = [
     { name: "Novice", minScore: 0, class: "rank-novice" },
     { name: "Eco Scout", minScore: 50, class: "rank-scout" },        
@@ -58,6 +57,253 @@ const RANK_SYSTEM = [
     { name: "Waste Master", minScore: 2000, class: "rank-master" },
     { name: "Eco Legend", minScore: 5000, class: "rank-legend" }     
 ];
+
+// ==========================================
+// 🎒 ITEM SYSTEM (REBALANCED & STACKABLE)
+// ==========================================
+
+const ITEM_DB = [
+    // --- XP BOOSTERS (Consumable) ---
+    { id: "xp01", name: "Energy Drink", icon: "⚡", rarity: "Common", desc: "XP x1.5 (10 Mins)", type: "xp_boost", duration: 10, val: 1.5 },
+    { id: "xp02", name: "Textbook", icon: "📚", rarity: "Rare", desc: "XP x2.0 (20 Mins)", type: "xp_boost", duration: 20, val: 2.0 },
+    { id: "xp03", name: "Golden Brain", icon: "🧠", rarity: "Epic", desc: "XP x3.0 (30 Mins)", type: "xp_boost", duration: 30, val: 3.0 },
+    { id: "xp04", name: "Alien Chip", icon: "👽", rarity: "Legendary", desc: "XP x5.0 (1 Hour)", type: "xp_boost", duration: 60, val: 5.0 },
+
+    // --- LUCK CHARMS (Now Consumable too!) ---
+    { id: "luk01", name: "Glass Eye", icon: "👁️", rarity: "Common", desc: "Drop Chance +5% (10 Mins)", type: "luck_boost", duration: 10, val: 5 },
+    { id: "luk02", name: "Magnet", icon: "🧲", rarity: "Rare", desc: "Drop Chance +10% (20 Mins)", type: "luck_boost", duration: 20, val: 10 },
+    { id: "luk03", name: "Lucky Cat", icon: "🐱", rarity: "Epic", desc: "Drop Chance +20% (30 Mins)", type: "luck_boost", duration: 30, val: 20 }
+];
+
+let pendingItem = null;
+
+// 🔥 Logic สุ่มของ (Hardcore + Active Buff Check)
+function rollItemDrop() {
+    // 1. Base Chance
+    const baseChance = 12; 
+
+    // 2. เช็ค Active Luck Buff
+    let luckBonus = 0;
+    if (userData.activeLuckBuff) {
+        if (Date.now() < userData.activeLuckBuff.expireAt) {
+            luckBonus = userData.activeLuckBuff.val;
+        } else {
+            // หมดอายุ -> ลบทิ้ง
+            db.ref('users/' + userId).update({ activeLuckBuff: null });
+            userData.activeLuckBuff = null;
+        }
+    }
+    
+    const finalChance = baseChance + luckBonus;
+    console.log(`Drop Rate: ${finalChance}% (Base: ${baseChance} + Buff: ${luckBonus})`);
+
+    // สุ่ม
+    if (Math.random() * 100 > finalChance) return null; 
+
+    // Rarity (Weighted)
+    const rRoll = Math.random() * 100;
+    let rarityPool = [];
+    
+    if (rRoll < 70) rarityPool = ITEM_DB.filter(i => i.rarity === "Common");
+    else if (rRoll < 95) rarityPool = ITEM_DB.filter(i => i.rarity === "Rare");
+    else if (rRoll < 99.5) rarityPool = ITEM_DB.filter(i => i.rarity === "Epic");
+    else rarityPool = ITEM_DB.filter(i => i.rarity === "Legendary");
+
+    if (rarityPool.length === 0) return ITEM_DB[0];
+    return rarityPool[Math.floor(Math.random() * rarityPool.length)];
+}
+
+// 🔥 Logic ใช้ไอเทม
+function useItem(itemIdToUse) {
+    if(!userId) return;
+
+    db.ref('users/' + userId).once('value').then(snapshot => {
+        const u = snapshot.val();
+        let inv = u.inventory || [];
+        
+        // Find index of item
+        const index = inv.findIndex(i => i.id === itemIdToUse);
+        if (index === -1) return;
+
+        const dbItem = ITEM_DB.find(x => x.id === itemIdToUse);
+        if (!dbItem) return;
+
+        const confirmMsg = currentLang === 'en' 
+            ? `Activate ${dbItem.name}? (${dbItem.duration} mins)` 
+            : `ยืนยันใช้ "${dbItem.name}" หรือไม่?\n(มีผล ${dbItem.duration} นาที)`;
+        
+        if (confirm(confirmMsg)) {
+            // ลบ 1 ชิ้น
+            inv.splice(index, 1);
+            
+            const expireTime = Date.now() + (dbItem.duration * 60 * 1000);
+            const newBuff = { itemId: dbItem.id, expireAt: expireTime, val: dbItem.val, name: dbItem.name };
+            
+            let updates = { inventory: inv };
+
+            // แยกประเภท Buff
+            if (dbItem.type === 'xp_boost') {
+                updates.activeXpBuff = newBuff;
+            } else if (dbItem.type === 'luck_boost') {
+                updates.activeLuckBuff = newBuff;
+            }
+
+            db.ref('users/' + userId).update(updates).then(() => {
+                userData.inventory = inv;
+                if(dbItem.type === 'xp_boost') userData.activeXpBuff = newBuff;
+                if(dbItem.type === 'luck_boost') userData.activeLuckBuff = newBuff;
+                
+                alert(currentLang === 'en' ? "Buff Activated!" : "ใช้งานไอเทมสำเร็จ!");
+                openInventory(); // Refresh UI
+            });
+        }
+    });
+}
+
+function calculateXPWithBuff(baseXP) {
+    let multiplier = 1;
+    let isBuffActive = false;
+
+    if (userData.activeXpBuff) {
+        if (Date.now() < userData.activeXpBuff.expireAt) {
+            multiplier = userData.activeXpBuff.val;
+            isBuffActive = true;
+        } else {
+            db.ref('users/' + userId).update({ activeXpBuff: null });
+            userData.activeXpBuff = null;
+        }
+    }
+    const finalXP = Math.floor(baseXP * multiplier);
+    return { total: finalXP, multiplier: multiplier, active: isBuffActive };
+}
+
+function showItemDropModal(item) {
+    document.getElementById('drop-animation').innerText = item.icon;
+    document.getElementById('drop-name').innerText = item.name;
+    document.getElementById('drop-desc').innerText = item.desc;
+    
+    const rBadge = document.getElementById('drop-rarity');
+    rBadge.innerText = item.rarity.toUpperCase();
+    rBadge.className = "rank-badge";
+    rBadge.classList.remove("rank-novice", "rank-scout", "rank-guardian", "rank-legend");
+    
+    if(item.rarity === "Common") rBadge.classList.add("rank-novice");
+    else if(item.rarity === "Rare") rBadge.classList.add("rank-scout");
+    else if(item.rarity === "Epic") rBadge.classList.add("rank-guardian");
+    else if(item.rarity === "Legendary") rBadge.classList.add("rank-legend");
+
+    document.getElementById('item-drop-modal').style.display = 'flex';
+}
+
+function closeItemDropModal() { document.getElementById('item-drop-modal').style.display = 'none'; }
+
+function saveItemToInventory(item) {
+    if(!userId) return;
+    db.ref('users/' + userId + '/inventory').once('value').then(snapshot => {
+        let inv = snapshot.val() || [];
+        if(!Array.isArray(inv)) inv = [];
+        inv.push(item);
+        db.ref('users/' + userId).update({ inventory: inv });
+    });
+}
+
+// 🔥 Logic แสดงผล Inventory (Stacking)
+function openInventory() {
+    const modal = document.getElementById('inventory-modal');
+    const grid = document.getElementById('inventory-grid');
+    const buffContainer = document.getElementById('active-buff-container');
+    
+    grid.innerHTML = '<p>Loading...</p>';
+    modal.style.display = 'flex';
+
+    if(!userId) {
+        grid.innerHTML = '<p>Please Login first.</p>';
+        return;
+    }
+
+    db.ref('users/' + userId).once('value').then(snapshot => {
+        const u = snapshot.val();
+        const inv = u.inventory || [];
+        userData.activeXpBuff = u.activeXpBuff || null;
+        userData.activeLuckBuff = u.activeLuckBuff || null;
+
+        grid.innerHTML = '';
+        buffContainer.innerHTML = '';
+
+        // --- Render Active Buffs ---
+        let buffsHtml = '';
+        
+        // XP Buff Check
+        if (userData.activeXpBuff && Date.now() < userData.activeXpBuff.expireAt) {
+            const timeLeft = Math.ceil((userData.activeXpBuff.expireAt - Date.now()) / 60000);
+            buffsHtml += `
+                <div style="background:#fff3bf; border:1px solid #f08c00; color:#e67700; padding:8px; border-radius:8px; margin-bottom:5px; font-size:0.85rem;">
+                    <b>⚡ XP Boost x${userData.activeXpBuff.val}</b> (${timeLeft} mins left)
+                </div>`;
+        }
+        
+        // Luck Buff Check
+        if (userData.activeLuckBuff && Date.now() < userData.activeLuckBuff.expireAt) {
+            const timeLeft = Math.ceil((userData.activeLuckBuff.expireAt - Date.now()) / 60000);
+            buffsHtml += `
+                <div style="background:#d3f9d8; border:1px solid #2b8a3e; color:#2b8a3e; padding:8px; border-radius:8px; margin-bottom:5px; font-size:0.85rem;">
+                    <b>🍀 Drop Rate +${userData.activeLuckBuff.val}%</b> (${timeLeft} mins left)
+                </div>`;
+        }
+
+        if (buffsHtml === '') {
+            buffContainer.innerHTML = `<div style="text-align:center; color:#999; font-size:0.8rem;">No active buffs</div>`;
+        } else {
+            buffContainer.innerHTML = buffsHtml;
+        }
+
+        // --- Render Inventory (Stacked) ---
+        if(inv.length === 0) {
+            grid.innerHTML += '<p style="grid-column: 1/-1; text-align: center; color:#999;">Bag is empty.</p>';
+            return;
+        }
+
+        // Group items by ID
+        const stackedItems = {};
+        inv.forEach(item => {
+            if (stackedItems[item.id]) {
+                stackedItems[item.id].count++;
+            } else {
+                stackedItems[item.id] = { ...item, count: 1 };
+            }
+        });
+
+        Object.values(stackedItems).forEach((itemObj) => {
+            const itemData = ITEM_DB.find(x => x.id === itemObj.id);
+            if (!itemData) return;
+            
+            const div = document.createElement('div');
+            div.className = `item-slot rarity-${itemData.rarity.toLowerCase()}`;
+            
+            // Show Count Badge if > 1
+            const countBadge = itemObj.count > 1 ? `<div class="item-count">x${itemObj.count}</div>` : '';
+            const actionLabel = `<div style="position:absolute; top:5px; right:5px; background:#f08c00; color:white; font-size:0.6rem; padding:2px 5px; border-radius:4px;">USE</div>`;
+
+            div.innerHTML = `
+                ${countBadge}
+                ${actionLabel}
+                <span class="item-icon">${itemData.icon}</span>
+                <div class="item-name">${itemData.name}</div>
+                <div style="font-size:0.65rem; color:#666;">${itemData.desc}</div>
+            `;
+            
+            // Pass ID to useItem instead of index
+            div.onclick = () => useItem(itemData.id);
+            grid.appendChild(div);
+        });
+    });
+}
+
+function closeInventory() { document.getElementById('inventory-modal').style.display = 'none'; }
+
+// 🆕 TUTORIAL FUNCTIONS
+function openTutorial() { document.getElementById('tutorial-modal').style.display = 'flex'; }
+function closeTutorial() { document.getElementById('tutorial-modal').style.display = 'none'; }
 
 // ==========================================
 // 🔐 AUTH SYSTEM
@@ -133,7 +379,11 @@ function handleAuthAction() {
             } else {
                 const first = document.getElementById('reg-firstname').value.trim() || userIn;
                 const last = document.getElementById('reg-lastname').value.trim() || "";
-                const newUser = { username: userIn, password: passIn, firstName: first, lastName: last, score: 0, profilePic: tempProfilePic };
+                const newUser = { 
+                    username: userIn, password: passIn, firstName: first, lastName: last, 
+                    score: 0, profilePic: tempProfilePic, 
+                    inventory: [], activeXpBuff: null, activeLuckBuff: null
+                };
                 db.ref('users/' + safeId).set(newUser).then(() => loginSuccess(safeId, newUser));
             }
         } else {
@@ -181,7 +431,6 @@ function saveProfileChanges() {
     });
 }
 
-// 🟢 Rank System
 function getRank(score) {
     for (let i = RANK_SYSTEM.length - 1; i >= 0; i--) {
         if (score >= RANK_SYSTEM[i].minScore) {
@@ -202,21 +451,16 @@ function updateUI(checkLevelUp = false) {
     document.getElementById('login-lang-btn').innerText = currentLang.toUpperCase();
     document.querySelector('.app-title-login').innerHTML = t.appName;
 
-    // Rank Logic
     const oldRankEl = document.getElementById('user-rank');
     const oldRankName = oldRankEl.innerText;
-    
     const currentRankObj = getRank(userData.score || 0);
-    
     oldRankEl.innerText = currentRankObj.name;
     oldRankEl.className = `rank-badge ${currentRankObj.class}`;
 
-    // Level Up Check
     if (checkLevelUp && oldRankName !== currentRankObj.name && oldRankName !== "Beginner") {
          showLevelUpModal(currentRankObj.name);
     }
 
-    // Button State
     const btnMain = document.getElementById('btn-main');
     const txtBtn = document.getElementById('txt-btn-start');
     if(isRunning) {
@@ -230,14 +474,7 @@ function showLevelUpModal(rankName) {
     const modal = document.getElementById('levelup-modal');
     document.getElementById('lvl-rank-name').innerText = rankName;
     modal.style.display = 'flex';
-    
-    if(isSoundOn) {
-        // Optional sound code here
-    }
-
-    for(let i=0; i<50; i++) {
-        createConfetti(modal);
-    }
+    for(let i=0; i<50; i++) { createConfetti(modal); }
 }
 
 function createConfetti(container) {
@@ -248,31 +485,15 @@ function createConfetti(container) {
     conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
     conf.style.animationDuration = (Math.random() * 3 + 2) + 's';
     container.appendChild(conf);
-    
     setTimeout(() => { conf.remove(); }, 5000);
 }
 
-function closeLevelUpModal() {
-    document.getElementById('levelup-modal').style.display = 'none';
-}
-
-function toggleLanguage() { 
-    currentLang = (currentLang==='en')?'th':'en'; updateUI(); 
-}
-function toggleSound() { 
-    isSoundOn = !isSoundOn; document.getElementById('btn-sound').classList.toggle('active'); 
-}
-
-// ==========================================
-// 📷 SECTION: CAMERA LOGIC
-// ==========================================
+function closeLevelUpModal() { document.getElementById('levelup-modal').style.display = 'none'; }
+function toggleLanguage() { currentLang = (currentLang==='en')?'th':'en'; updateUI(); }
+function toggleSound() { isSoundOn = !isSoundOn; document.getElementById('btn-sound').classList.toggle('active'); }
 
 async function handleMainButton() {
-    if (!isRunning) {
-        startCamera();
-    } else {
-        captureAndAnalyzeWithGroq(); // 🚀 เรียกใช้ AI Groq
-    }
+    if (!isRunning) { startCamera(); } else { captureAndAnalyzeWithGroq(); }
 }
 
 async function startCamera() {
@@ -284,45 +505,30 @@ async function startCamera() {
     txtBtn.innerText = textData[currentLang].loading;
 
     try {
-        if (webcam && webcam.canvas) { 
-            webcam.stop(); 
-            webcam = null; 
-        }
+        if (webcam && webcam.canvas) { webcam.stop(); webcam = null; }
         container.innerHTML = ""; 
 
         const size = 600; 
         const flip = !useBackCamera; 
         
         webcam = new tmImage.Webcam(size, size, flip);
+        let constraints = { facingMode: useBackCamera ? { exact: "environment" } : "user" };
 
-        let constraints = {
-            facingMode: useBackCamera ? { exact: "environment" } : "user"
-        };
-
-        try {
-            await webcam.setup(constraints);
-        } catch (err) {
+        try { await webcam.setup(constraints); } catch (err) {
             constraints = { facingMode: useBackCamera ? "environment" : "user" };
             await webcam.setup(constraints);
         }
 
         await webcam.play();
-        
-        webcam.canvas.style.width = "100%";
-        webcam.canvas.style.height = "100%";
-        webcam.canvas.style.objectFit = "cover";
+        webcam.canvas.style.width = "100%"; webcam.canvas.style.height = "100%"; webcam.canvas.style.objectFit = "cover";
         webcam.canvas.setAttribute("playsinline", true);
-
         container.appendChild(webcam.canvas);
 
         isRunning = true;
-        
         btn.classList.add('scanning-mode'); 
         btn.innerHTML = `<i class="bi bi-bullseye"></i> <span id="txt-btn-start">${textData[currentLang].btnScan}</span>`;
         btn.disabled = false;
-
         document.getElementById('btn-stop-cam').style.display = 'inline-flex';
-
         animationId = window.requestAnimationFrame(loop);
 
     } catch (e) {
@@ -335,19 +541,13 @@ async function startCamera() {
 function stopScanning() {
     isRunning = false; 
     cancelAnimationFrame(animationId);
-    
-    if(webcam) {
-        webcam.stop();
-        webcam = null; 
-    }
+    if(webcam) { webcam.stop(); webcam = null; }
     
     document.getElementById('scan-line').style.display = 'none';
     document.getElementById('btn-stop-cam').style.display = 'none'; 
-    
     const btn = document.getElementById('btn-main');
     btn.classList.remove('scanning-mode');
     btn.disabled = false;
-    
     btn.innerHTML = `<i class="bi bi-camera-fill"></i> <span id="txt-btn-start">${textData[currentLang].btnStart}</span>`;
     
     const container = document.getElementById('webcam-container');
@@ -358,28 +558,15 @@ function stopScanning() {
 
 function switchCameraMode() {
     useBackCamera = !useBackCamera;
-    if(isRunning) {
-        stopScanning();
-        setTimeout(() => {
-            startCamera();
-        }, 500); 
-    }
+    if(isRunning) { stopScanning(); setTimeout(() => { startCamera(); }, 500); }
 }
 
 async function loop() {
-    if(isRunning && webcam) { 
-        webcam.update(); 
-        animationId = window.requestAnimationFrame(loop); 
-    }
+    if(isRunning && webcam) { webcam.update(); animationId = window.requestAnimationFrame(loop); }
 }
-
-// ==========================================
-// 🚀 AI SECTION: GROQ (Llama 4 Scout Vision)
-// ==========================================
 
 async function captureAndAnalyzeWithGroq() {
     if (!webcam || !webcam.canvas) return;
-
     if (!GROQ_API_KEY || GROQ_API_KEY.includes("YOUR_GROQ")) {
         alert("Please set your GROQ_API_KEY in script.js first!");
         return;
@@ -387,19 +574,12 @@ async function captureAndAnalyzeWithGroq() {
 
     const btn = document.getElementById('btn-main');
     const originalText = btn.innerHTML;
-    
-    // UI: Loading
     btn.disabled = true;
     btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${textData[currentLang].analyzing}`;
-    
-    const scanLine = document.getElementById('scan-line');
-    scanLine.style.display = 'block';
+    document.getElementById('scan-line').style.display = 'block';
 
     try {
-        // 1. จับภาพ
         const imageBase64 = webcam.canvas.toDataURL("image/jpeg", 0.7);
-
-        // 2. ส่งไปถาม Groq API
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -414,14 +594,12 @@ async function captureAndAnalyzeWithGroq() {
                         content: [
                             {
                                 type: "text",
-                                // 🟢 Prompt: ระบุกฎสีถังขยะของไทยให้ชัดเจน
                                 text: `Identify the waste object in this image.
                                 Classify it STRICTLY based on Thai waste sorting rules:
-
                                 1. "Recyclable" (Yellow Bin): Clean plastic bottles, glass, metal cans, paper, cardboard.
-                                2. "Organic" (Green Bin): Food scraps, fruit peels, leaves, biodegradable waste.
-                                3. "Hazardous" (Red Bin): Batteries, electronics (e-waste), light bulbs, chemicals, medicine containers.
-                                4. "General" (Blue Bin): Dirty plastic bags, snack wrappers, foam, tissues, wooden sticks, toothpaste tubes, candy wrappers, foil bags.
+                                2. "Organic" (Green Bin): Food scraps, fruit peels, leaves.
+                                3. "Hazardous" (Red Bin): Batteries, electronics, light bulbs, chemicals, medicine containers.
+                                4. "General" (Blue Bin): Dirty plastic, snack wrappers, foam, tissues, wooden sticks, toothpaste tubes.
 
                                 Return JSON ONLY with this structure:
                                 {
@@ -435,142 +613,99 @@ async function captureAndAnalyzeWithGroq() {
                                   "knowledge_en": "One fun fact in English",
                                   "knowledge_th": "One fun fact in Thai"
                                 }
-                                If no waste is found, set category to "Unknown".
-                                Do not include markdown code blocks.`
+                                If no waste is found, set category to "Unknown".`
                             },
-                            {
-                                type: "image_url",
-                                image_url: { url: imageBase64 }
-                            }
+                            { type: "image_url", image_url: { url: imageBase64 } }
                         ]
                     }
                 ],
-                temperature: 0.1,
-                max_tokens: 500,
-                response_format: { type: "json_object" }
+                temperature: 0.1, max_tokens: 500, response_format: { type: "json_object" }
             })
         });
 
         const json = await response.json();
-        
-        if (json.error) {
-            throw new Error(json.error.message);
-        }
+        if (json.error) throw new Error(json.error.message);
 
         const aiContent = json.choices[0].message.content;
         const resultData = JSON.parse(aiContent);
 
-        scanLine.style.display = 'none';
+        document.getElementById('scan-line').style.display = 'none';
         btn.disabled = false;
         btn.innerHTML = originalText;
 
         if (resultData.category === "Unknown") {
-            alert(currentLang === 'en' ? "No waste detected. Try closer." : "ไม่พบขยะในภาพ ลองขยับเข้ามาใกล้ๆ ครับ");
+            alert(currentLang === 'en' ? "No waste detected." : "ไม่พบขยะในภาพ");
         } else {
+            pendingItem = rollItemDrop(); 
             showResultPopupFromAI(resultData);
         }
 
     } catch (error) {
         console.error("AI Error:", error);
-        scanLine.style.display = 'none';
+        document.getElementById('scan-line').style.display = 'none';
         btn.disabled = false;
         btn.innerHTML = originalText;
         alert("AI Error: " + error.message);
     }
 }
 
-// ==========================================
-// 🛠️ DISPLAY RESULT (AUTO MAPPING FIX)
-// ==========================================
-
 function showResultPopupFromAI(aiData) {
     const card = document.getElementById('modal-card-content');
     
-    // 🟢 Master Config: บังคับคะแนนและสีถังตามประเภทที่ AI ส่งมา
     const wasteStandards = {
-        "Recyclable": {
-            xp: 10,
-            colorClass: "theme-yellow",
-            icon: "bi-recycle",
-            binNameEN: "Yellow Bin (Recycle)",
-            binNameTH: "ถังเหลือง (รีไซเคิล)"
-        },
-        "Organic": {
-            xp: 5,
-            colorClass: "theme-green",
-            icon: "bi-flower1",
-            binNameEN: "Green Bin (Organic)",
-            binNameTH: "ถังเขียว (อินทรีย์)"
-        },
-        "Hazardous": {
-            xp: 15,
-            colorClass: "theme-red",
-            icon: "bi-exclamation-triangle-fill",
-            binNameEN: "Red Bin (Hazardous)",
-            binNameTH: "ถังแดง (อันตราย)"
-        },
-        "General": {
-            xp: 2,
-            colorClass: "theme-blue",
-            icon: "bi-trash3-fill",
-            binNameEN: "Blue Bin (General)",
-            binNameTH: "ถังน้ำเงิน (ทั่วไป)"
-        },
-        "Unknown": {
-            xp: 0,
-            colorClass: "theme-blue",
-            icon: "bi-question-circle",
-            binNameEN: "Unknown Bin",
-            binNameTH: "ไม่ทราบประเภท"
-        }
+        "Recyclable": { xp: 10, colorClass: "theme-yellow", icon: "bi-recycle", binNameEN: "Yellow Bin (Recycle)", binNameTH: "ถังเหลือง (รีไซเคิล)" },
+        "Organic": { xp: 5, colorClass: "theme-green", icon: "bi-flower1", binNameEN: "Green Bin (Organic)", binNameTH: "ถังเขียว (อินทรีย์)" },
+        "Hazardous": { xp: 15, colorClass: "theme-red", icon: "bi-exclamation-triangle-fill", binNameEN: "Red Bin (Hazardous)", binNameTH: "ถังแดง (อันตราย)" },
+        "General": { xp: 2, colorClass: "theme-blue", icon: "bi-trash3-fill", binNameEN: "Blue Bin (General)", binNameTH: "ถังน้ำเงิน (ทั่วไป)" },
+        "Unknown": { xp: 0, colorClass: "theme-blue", icon: "bi-question-circle", binNameEN: "Unknown Bin", binNameTH: "ไม่ทราบประเภท" }
     };
 
-    // ตรวจสอบว่า AI ส่ง category มาตรงไหม ถ้าไม่ตรงให้ปัดเป็น General
     const category = wasteStandards[aiData.category] ? aiData.category : "General";
     const info = wasteStandards[category];
 
-    // Reset Theme
     card.classList.remove('theme-yellow', 'theme-green', 'theme-red', 'theme-blue');
     card.classList.add(info.colorClass);
 
-    // Update Text Data
-    document.getElementById('res-xp').innerText = "+" + info.xp + " XP";
-    
+    const xpResult = calculateXPWithBuff(info.xp);
+    let xpText = `+${xpResult.total} XP`;
+    if (xpResult.multiplier > 1) {
+        xpText += ` (Boost x${xpResult.multiplier} 🔥)`;
+    }
+    document.getElementById('res-xp').innerText = xpText;
+
     const isTH = currentLang === 'th';
     document.getElementById('res-title').innerText = isTH ? aiData.name_th : aiData.name_en;
-    document.getElementById('res-bin').innerText = isTH ? info.binNameTH : info.binNameEN; // ใช้ชื่อถังจาก Config เราเอง
+    document.getElementById('res-bin').innerText = isTH ? info.binNameTH : info.binNameEN;
     document.getElementById('res-desc').innerText = isTH ? aiData.desc_th : aiData.desc_en;
     document.getElementById('res-knowledge').innerText = isTH ? aiData.knowledge_th : aiData.knowledge_en;
     document.getElementById('res-howto').innerText = isTH ? aiData.howto_th : aiData.howto_en;
-    
     document.getElementById('res-icon').className = `bi ${info.icon}`;
 
     document.getElementById('result-modal').style.display = "flex";
     
-    // Speak
     if(isSoundOn) {
-        const binText = isTH ? info.binNameTH : info.binNameEN;
-        const itemText = isTH ? aiData.name_th : aiData.name_en;
-        const textToSpeak = `${itemText}. ${binText}`;
+        const textToSpeak = isTH ? `${aiData.name_th}. ${info.binNameTH}` : `${aiData.name_en}. ${info.binNameEN}`;
         const u = new SpeechSynthesisUtterance(textToSpeak);
         u.lang = isTH ? 'th-TH' : 'en-US';
         window.speechSynthesis.speak(u);
     }
     
-    // Save Score
-    userData.score = (userData.score || 0) + info.xp;
+    userData.score = (userData.score || 0) + xpResult.total;
     if(userId) {
         db.ref('users/' + userId).update({ score: userData.score });
     }
-    
     updateUI(true); 
 }
 
 function closeResultModal() {
     document.getElementById('result-modal').style.display = 'none';
+    if (pendingItem) {
+        showItemDropModal(pendingItem);
+        saveItemToInventory(pendingItem);
+        pendingItem = null;
+    }
 }
 
-// Handle Enter Key for Login
 document.getElementById('username-input').addEventListener("keyup", function(event) {
     if (event.key === "Enter") handleAuthAction();
 });

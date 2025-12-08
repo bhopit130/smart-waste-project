@@ -8,7 +8,6 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,7 +16,7 @@
         <button class="lang-float-btn" onclick="toggleLanguage()" id="login-lang-btn">EN</button>
         <div class="login-box glass-effect">
             <div class="login-logo">
-                <img src="logo.png" onerror="this.src='https://placehold.co/80x80/eee/999?text=DB'">
+                <img src="Logo.png" onerror="this.src='https://placehold.co/80x80/eee/999?text=DB'">
             </div>
             <h1 class="app-title-login">Smart Waste<br>Classifier</h1>
             <h2 id="auth-title">Welcome Back</h2>
@@ -54,19 +53,21 @@
         <header class="top-header">
             <div class="brand">
                 <div class="logo-circle">
-                    <img src="logo.png" alt="Logo">
+                    <img src="Logo.png" alt="Logo">
                 </div>
                 <div class="text-group">
                     <h1>Smart Waste</h1>
                     <span class="badge-live">● Online System</span>
                 </div>
             </div>
-            <div class="profile-pill" onclick="openProfileSettings()">
-                <img src="https://placehold.co/100x100/eee/999?text=U" id="topbar-img">
-                <div class="xp-info">
-                    <span id="display-name">Guest</span>
-                    <span class="rank-badge" id="user-rank">Beginner</span> 
-                    <span class="xp-val" id="score-val" style="display:none;">0 XP</span> 
+            
+            <div style="display:flex; gap:10px;">
+                <div class="profile-pill" onclick="openProfileSettings()">
+                    <img src="https://placehold.co/100x100/eee/999?text=U" id="topbar-img">
+                    <div class="xp-info">
+                        <span id="display-name">Guest</span>
+                        <span class="rank-badge" id="user-rank">Beginner</span> 
+                    </div>
                 </div>
             </div>
         </header>
@@ -88,14 +89,26 @@
             </div>
 
             <div class="controls-area">
-                <div class="tools-row">
-                    <button class="icon-btn" onclick="toggleLanguage()" id="btn-lang">EN</button>
-                    <button class="icon-btn active" onclick="toggleSound()" id="btn-sound"><i class="bi bi-volume-up-fill"></i></button>
-                    <button class="icon-btn" onclick="switchCameraMode()" id="btn-switch-cam"><i class="bi bi-arrow-repeat"></i></button>
+                <div class="tools-row" style="justify-content: space-between;">
                     
-                    <button class="icon-btn danger-btn" onclick="stopScanning()" id="btn-stop-cam" style="display:none; color: #ef476f; border-color: #ef476f;">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
+                    <div class="tools-group-left" style="display:flex; gap:10px;">
+                        <button class="icon-btn" onclick="openTutorial()" style="background:#e3fafc; color:#228be6;">
+                            <i class="bi bi-question-lg"></i>
+                        </button>
+                        <button class="icon-btn" onclick="openInventory()" style="background:#fff3bf; color:#f08c00;">
+                            <i class="bi bi-backpack-fill"></i>
+                        </button>
+                    </div>
+
+                    <div class="tools-group-right" style="display:flex; gap:10px;">
+                        <button class="icon-btn" onclick="toggleLanguage()" id="btn-lang">EN</button>
+                        <button class="icon-btn active" onclick="toggleSound()" id="btn-sound"><i class="bi bi-volume-up-fill"></i></button>
+                        <button class="icon-btn" onclick="switchCameraMode()" id="btn-switch-cam"><i class="bi bi-arrow-repeat"></i></button>
+                        <button class="icon-btn danger-btn" onclick="stopScanning()" id="btn-stop-cam" style="display:none; color: #ef476f; border-color: #ef476f;">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+
                 </div>
                 
                 <button class="btn-main-action" onclick="handleMainButton()" id="btn-main">
@@ -106,15 +119,6 @@
     </div>
 
     <div class="modal-overlay" id="result-modal">
-<div class="levelup-overlay" id="levelup-modal">
-        <div class="levelup-card">
-            <div class="levelup-header">LEVEL UP!</div>
-            <img src="https://cdn-icons-png.flaticon.com/512/616/616490.png" width="80" alt="Trophy">
-            <p>Congratulations! You are now a</p>
-            <div class="levelup-rank" id="lvl-rank-name">Eco Hero</div>
-            <button class="btn-claim" onclick="closeLevelUpModal()">AWESOME!</button>
-        </div>
-    </div>
         <div class="modal-card" id="modal-card-content">
             <div class="modal-header"><div class="xp-badge-lg" id="res-xp">+10 XP</div></div>
             <div class="modal-body">
@@ -130,6 +134,79 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-continue" onclick="closeResultModal()">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="tutorial-modal" style="align-items: center;">
+        <div class="modal-card" style="max-height: 85vh; overflow-y: auto; text-align: left;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="margin:0;"><i class="bi bi-book-half"></i> Game Guide</h3>
+                <button onclick="closeTutorial()" style="background:none;border:none;font-size:1.5rem;">&times;</button>
+            </div>
+            
+            <div class="tutorial-section">
+                <h4>🗑️ Waste Types & XP</h4>
+                <div class="tut-row"><span class="badge-dot" style="background:var(--warning);"></span> <b>Yellow Bin (Recycle)</b>: +10 XP</div>
+                <div class="tut-row"><span class="badge-dot" style="background:var(--success);"></span> <b>Green Bin (Organic)</b>: +5 XP</div>
+                <div class="tut-row"><span class="badge-dot" style="background:var(--danger);"></span> <b>Red Bin (Hazardous)</b>: +15 XP</div>
+                <div class="tut-row"><span class="badge-dot" style="background:var(--primary);"></span> <b>Blue Bin (General)</b>: +2 XP</div>
+            </div>
+
+            <div class="tutorial-section">
+                <h4>🎒 Items & Rarity</h4>
+                <p style="font-size:0.85rem; color:#666;">Scan waste to find hidden items! (12% Drop Rate)</p>
+                <div class="tut-row"><span class="rarity-badge common">Common</span> Easy (70%)</div>
+                <div class="tut-row"><span class="rarity-badge rare">Rare</span> Uncommon (25%)</div>
+                <div class="tut-row"><span class="rarity-badge epic">Epic</span> Hard (4.5%)</div>
+                <div class="tut-row"><span class="rarity-badge legendary">Legendary</span> Extreme (0.5%)</div>
+            </div>
+
+            <div class="tutorial-section">
+                <h4>⚡ Item Usage (Consumables)</h4>
+                <ul style="font-size:0.85rem; color:#444; padding-left:20px;">
+                    <li><b>XP Booster (⚡):</b> Boost XP for a limited time.</li>
+                    <li><b>Luck Charm (🍀):</b> Boost Drop Rate for a limited time.</li>
+                    <li><i>Note: All items are time-limited. Activate them wisely!</i></li>
+                </ul>
+            </div>
+            
+            <button class="btn-gradient" onclick="closeTutorial()">Got it!</button>
+        </div>
+    </div>
+
+    <div class="levelup-overlay" id="levelup-modal">
+        <div class="levelup-card">
+            <div class="levelup-header">LEVEL UP!</div>
+            <img src="https://cdn-icons-png.flaticon.com/512/616/616490.png" width="80" alt="Trophy">
+            <p>Congratulations! You are now a</p>
+            <div class="levelup-rank" id="lvl-rank-name">Eco Hero</div>
+            <button class="btn-claim" onclick="closeLevelUpModal()">AWESOME!</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="item-drop-modal" style="z-index: 2100;">
+        <div class="modal-card" style="border-top-color: #f08c00;">
+            <div class="levelup-header" style="font-size:1.2rem;">ITEM FOUND!</div>
+            <div id="drop-animation" style="font-size:4rem; margin:10px 0; animation: bounce 1s infinite;">🎁</div>
+            <h2 id="drop-name" style="color:#f08c00;">Golden Bottle Cap</h2>
+            <div class="rank-badge" id="drop-rarity" style="margin-bottom:10px;">LEGENDARY</div>
+            <p id="drop-desc" style="color:#666; font-size:0.9rem;">Rare collector's item.</p>
+            <button class="btn-gradient" onclick="closeItemDropModal()" style="margin-top:15px;">KEEP IT!</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="inventory-modal" style="align-items: center;">
+        <div class="modal-card" style="max-height: 80vh; overflow-y: auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="margin:0;"><i class="bi bi-backpack-fill"></i> My Bag</h3>
+                <button onclick="closeInventory()" style="background:none;border:none;font-size:1.5rem;">&times;</button>
+            </div>
+            
+            <div id="active-buff-container" style="margin-bottom:15px;"></div>
+            
+            <div id="inventory-grid" class="inventory-grid">
+                <p style="color:#999; width:100%; text-align:center;">Empty bag...</p>
             </div>
         </div>
     </div>
@@ -158,5 +235,4 @@
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <script src="script.js"></script>
 </body>
-
 </html>
