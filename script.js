@@ -567,8 +567,6 @@ async function loop() {
 
 async function captureAndAnalyzeWithGroq() {
     if (!webcam || !webcam.canvas) return;
-    
-    // ตรวจสอบ API Key
     if (!GROQ_API_KEY || GROQ_API_KEY.includes("YOUR_GROQ")) {
         alert("Please set your GROQ_API_KEY in script.js first!");
         return;
@@ -589,7 +587,7 @@ async function captureAndAnalyzeWithGroq() {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                // ✅ แก้ไขชื่อโมเดลให้ถูกต้องตรงนี้ครับ
+                // ✅ แก้ไขชื่อโมเดลตรงนี้ครับ
                 model: "llama-3.3-70b-versatile", 
                 messages: [
                     {
@@ -719,5 +717,4 @@ function closeResultModal() {
 
 document.getElementById('username-input').addEventListener("keyup", function(event) {
     if (event.key === "Enter") handleAuthAction();
-
 });
