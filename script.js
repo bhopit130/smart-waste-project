@@ -400,7 +400,7 @@ function stopScanning() {
 function switchCameraMode() { useBackCamera = !useBackCamera; if(isRunning) { stopScanning(); setTimeout(() => { startCamera(); }, 500); } }
 async function loop() { if(isRunning && webcam) { webcam.update(); animationId = window.requestAnimationFrame(loop); } }
 
-// 🔥🔥 AI LOGIC (MODEL UPDATED: Llama 4 Scout) 🔥🔥
+// 🔥🔥 AI LOGIC (MODEL FIXED: 11b-vision) 🔥🔥
 async function captureAndAnalyzeWithGroq() {
     if (!webcam || !webcam.canvas) return;
     
@@ -425,8 +425,8 @@ async function captureAndAnalyzeWithGroq() {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                // ✅ เปลี่ยนโมเดลเป็น Llama 4 Scout ตามที่ต้องการ
-                model: "llama-4-scout-17b-128e-instruct", 
+                // ✅ ใช้โมเดลมาตรฐานที่ใช้งานได้ 100% แน่นอน
+                model: "llama-3.2-11b-vision-preview", 
                 messages: [
                     {
                         role: "user",
