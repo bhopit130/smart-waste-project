@@ -1,6 +1,4 @@
-// ==========================================
-// ⚙️ CONFIGURATION & SETUP
-// ==========================================
+
 const firebaseConfig = {
     apiKey: "AIzaSyA3UTjmzolQs5HHejpzfga0px6uxnADuSM", 
     authDomain: "smart-waste-deebuk.firebaseapp.com",
@@ -11,10 +9,8 @@ const firebaseConfig = {
     appId: "1:11316279684:web:5cee12dd58e7b5962c05d1"
 };
 
-// ==========================================
-// 🛡️ API KEY SECURITY (ANTI-BAN SYSTEM)
-// ==========================================
-// แยก Key เป็น 2 ส่วนเพื่อหลบ Bot ตรวจจับ
+
+
 const keyPartA = "gsk_Z8abxu2EJmpvMm2I6RJi"; 
 const keyPartB = "WGdyb3FYsv6yo21KrMRvpA8LcRFyvliA";
 const GROQ_API_KEY = keyPartA + keyPartB; 
@@ -26,7 +22,7 @@ const db = firebase.database();
 // --- VARIABLES ---
 let currentLang = 'en';
 let isSoundOn = true;
-let userData = { score: 0, firstName: "", lastName: "", username: "", password: "", profilePic: "", inventory: [], activeBuff: null, equippedLuck: "" };
+let userData = { score: 0, firstName: "", lastName: "", username: "", password: "", profilePic: "", inventory: [], activeXpBuff: null, activeLuckBuff: null };
 let userId = "";
 let isRegisterMode = false;
 let tempProfilePic = "";
@@ -62,51 +58,44 @@ const RANK_SYSTEM = [
     { name: "Eco Legend", minScore: 5000, class: "rank-legend" }     
 ];
 
-// ==========================================
-// 🎒 ITEM SYSTEM (HARDCORE MODE)
-// ==========================================
 
 const ITEM_DB = [
     // --- XP BOOSTERS (Consumable) ---
-    { id: "xp01", name: "Energy Drink", icon: "⚡", rarity: "Common", desc: "XP x1.5 (10 Mins)", type: "consumable", duration: 10, multiplier: 1.5 },
-    { id: "xp02", name: "Textbook", icon: "📚", rarity: "Rare", desc: "XP x2.0 (20 Mins)", type: "consumable", duration: 20, multiplier: 2.0 },
-    { id: "xp03", name: "Golden Brain", icon: "🧠", rarity: "Epic", desc: "XP x3.0 (30 Mins)", type: "consumable", duration: 30, multiplier: 3.0 },
-    { id: "xp04", name: "Alien Chip", icon: "👽", rarity: "Legendary", desc: "XP x5.0 (1 Hour)", type: "consumable", duration: 60, multiplier: 5.0 },
+    { id: "xp01", name: "Energy Drink", icon: "⚡", rarity: "Common", desc: "XP x1.5 (10 Mins)", type: "xp_boost", duration: 10, val: 1.5 },
+    { id: "xp02", name: "Textbook", icon: "📚", rarity: "Rare", desc: "XP x2.0 (20 Mins)", type: "xp_boost", duration: 20, val: 2.0 },
+    { id: "xp03", name: "Golden Brain", icon: "🧠", rarity: "Epic", desc: "XP x3.0 (30 Mins)", type: "xp_boost", duration: 30, val: 3.0 },
+    { id: "xp04", name: "Alien Chip", icon: "👽", rarity: "Legendary", desc: "XP x5.0 (1 Hour)", type: "xp_boost", duration: 60, val: 5.0 },
 
-    // --- LUCK CHARMS (Equipment) ---
-    { id: "luk01", name: "Glass Eye", icon: "👁️", rarity: "Common", desc: "Drop Chance +5%", type: "equipment", stat: "luck", val: 5 },
-    { id: "luk02", name: "Magnet", icon: "🧲", rarity: "Rare", desc: "Drop Chance +10%", type: "equipment", stat: "luck", val: 10 },
-    { id: "luk03", name: "Lucky Cat", icon: "🐱", rarity: "Epic", desc: "Drop Chance +20%", type: "equipment", stat: "luck", val: 20 }
+    // --- LUCK CHARMS (Now Consumable & Timed!) ---
+    { id: "luk01", name: "Glass Eye", icon: "👁️", rarity: "Common", desc: "Drop Chance +5% (10 Mins)", type: "luck_boost", duration: 10, val: 5 },
+    { id: "luk02", name: "Magnet", icon: "🧲", rarity: "Rare", desc: "Drop Chance +10% (20 Mins)", type: "luck_boost", duration: 20, val: 10 },
+    { id: "luk03", name: "Lucky Cat", icon: "🐱", rarity: "Epic", desc: "Drop Chance +20% (30 Mins)", type: "luck_boost", duration: 30, val: 20 }
 ];
 
 let pendingItem = null;
 
-// 🔥 ปรับสมดุลความยาก (Hardcore Balance)
 function rollItemDrop() {
-    // 1. Base Chance ต่ำลง (จาก 30 เหลือ 12)
     const baseChance = 12; 
+    let luckBonus = 0;
 
-    // 2. คำนวณ Luck (Cap ไว้ไม่ให้เกิน 50% รวม)
-    const equippedId = userData.equippedLuck || "";
-    const equippedItem = ITEM_DB.find(i => i.id === equippedId);
-    let luckBonus = (equippedItem && equippedItem.val) ? equippedItem.val : 0;
-    
-    // Final Chance = 12% + Luck (Max Luck Item คือ +20%) = สูงสุดแค่ 32%
+    // Check Active Luck Buff
+    if (userData.activeLuckBuff) {
+        if (Date.now() < userData.activeLuckBuff.expireAt) {
+            luckBonus = userData.activeLuckBuff.val;
+        } else {
+            // Expired
+            db.ref('users/' + userId).update({ activeLuckBuff: null });
+            userData.activeLuckBuff = null;
+        }
+    }
+
     const finalChance = baseChance + luckBonus;
-    
-    console.log(`Drop Rate: ${finalChance}% (Base: ${baseChance} + Luck: ${luckBonus})`);
+    console.log(`Drop Rate: ${finalChance}% (Base: ${baseChance} + Bonus: ${luckBonus})`);
 
-    // สุ่มว่าจะดรอปไหม?
     if (Math.random() * 100 > finalChance) return null; 
 
-    // 3. ถ้าดรอป... สุ่ม Rarity (ยากขึ้น)
     const rRoll = Math.random() * 100;
     let rarityPool = [];
-    
-    // Common: 70% (0-70)
-    // Rare: 25% (70-95)
-    // Epic: 4.5% (95-99.5)
-    // Legendary: 0.5% (99.5-100) -> ยากมาก!
     
     if (rRoll < 70) rarityPool = ITEM_DB.filter(i => i.rarity === "Common");
     else if (rRoll < 95) rarityPool = ITEM_DB.filter(i => i.rarity === "Rare");
@@ -117,41 +106,48 @@ function rollItemDrop() {
     return rarityPool[Math.floor(Math.random() * rarityPool.length)];
 }
 
-function useItem(itemIndexInInventory) {
+function useItem(itemIdToUse) {
     if(!userId) return;
 
     db.ref('users/' + userId).once('value').then(snapshot => {
         const u = snapshot.val();
         let inv = u.inventory || [];
-        const itemObj = inv[itemIndexInInventory];
-        if (!itemObj) return;
+        
+        // Find FIRST instance of item to remove (backend logic)
+        const index = inv.findIndex(i => i.id === itemIdToUse);
+        if (index === -1) return;
 
-        const dbItem = ITEM_DB.find(x => x.id === itemObj.id);
+        const dbItem = ITEM_DB.find(x => x.id === itemIdToUse);
         if (!dbItem) return;
 
-        if (dbItem.type === "consumable") {
-            const confirmMsg = currentLang === 'en' 
-                ? `Activate ${dbItem.name}? It lasts ${dbItem.duration} mins.` 
-                : `ยืนยันใช้ "${dbItem.name}" หรือไม่?\n(มีผล ${dbItem.duration} นาที)`;
+        const confirmMsg = currentLang === 'en' 
+            ? `Activate ${dbItem.name}? (${dbItem.duration} mins)` 
+            : `ยืนยันใช้ "${dbItem.name}" หรือไม่?\n(มีผล ${dbItem.duration} นาที)`;
+        
+        if (confirm(confirmMsg)) {
+            // Remove 1 item from inventory
+            inv.splice(index, 1);
             
-            if (confirm(confirmMsg)) {
-                inv.splice(itemIndexInInventory, 1);
-                const expireTime = Date.now() + (dbItem.duration * 60 * 1000);
-                const newBuff = { itemId: dbItem.id, expireAt: expireTime, multiplier: dbItem.multiplier };
-                
-                db.ref('users/' + userId).update({ inventory: inv, activeBuff: newBuff }).then(() => {
-                    userData.inventory = inv;
-                    userData.activeBuff = newBuff;
-                    alert(currentLang === 'en' ? "Buff Activated!" : "เริ่มใช้งานไอเทมแล้ว! รีบสแกนเลย!");
-                    openInventory();
-                });
+            const expireTime = Date.now() + (dbItem.duration * 60 * 1000);
+            const newBuff = { itemId: dbItem.id, expireAt: expireTime, val: dbItem.val, name: dbItem.name };
+            
+            let updates = { inventory: inv };
+
+            // Apply Buff based on Type
+            if (dbItem.type === 'xp_boost') { 
+                updates.activeXpBuff = newBuff; 
+            } 
+            else if (dbItem.type === 'luck_boost') { 
+                updates.activeLuckBuff = newBuff; 
             }
-        }
-        else if (dbItem.type === "equipment") {
-            let newEquip = (u.equippedLuck === itemObj.id) ? "" : itemObj.id;
-            db.ref('users/' + userId).update({ equippedLuck: newEquip }).then(() => {
-                userData.equippedLuck = newEquip;
-                openInventory();
+
+            db.ref('users/' + userId).update(updates).then(() => {
+                userData.inventory = inv;
+                if(dbItem.type === 'xp_boost') userData.activeXpBuff = newBuff;
+                if(dbItem.type === 'luck_boost') userData.activeLuckBuff = newBuff;
+                
+                alert(currentLang === 'en' ? "Buff Activated!" : "เริ่มใช้งานไอเทมแล้ว! รีบสแกนเลย!");
+                openInventory(); 
             });
         }
     });
@@ -161,13 +157,13 @@ function calculateXPWithBuff(baseXP) {
     let multiplier = 1;
     let isBuffActive = false;
 
-    if (userData.activeBuff) {
-        if (Date.now() < userData.activeBuff.expireAt) {
-            multiplier = userData.activeBuff.multiplier;
+    if (userData.activeXpBuff) {
+        if (Date.now() < userData.activeXpBuff.expireAt) {
+            multiplier = userData.activeXpBuff.val;
             isBuffActive = true;
         } else {
-            db.ref('users/' + userId).update({ activeBuff: null });
-            userData.activeBuff = null;
+            db.ref('users/' + userId).update({ activeXpBuff: null });
+            userData.activeXpBuff = null;
         }
     }
     const finalXP = Math.floor(baseXP * multiplier);
@@ -182,7 +178,7 @@ function showItemDropModal(item) {
     const rBadge = document.getElementById('drop-rarity');
     rBadge.innerText = item.rarity.toUpperCase();
     rBadge.className = "rank-badge";
-    rBadge.classList.remove("rank-novice", "rank-scout", "rank-guardian", "rank-legend"); // Reset classes
+    rBadge.classList.remove("rank-novice", "rank-scout", "rank-guardian", "rank-legend");
     
     if(item.rarity === "Common") rBadge.classList.add("rank-novice");
     else if(item.rarity === "Rare") rBadge.classList.add("rank-scout");
@@ -207,6 +203,8 @@ function saveItemToInventory(item) {
 function openInventory() {
     const modal = document.getElementById('inventory-modal');
     const grid = document.getElementById('inventory-grid');
+    const buffContainer = document.getElementById('active-buff-container');
+    
     grid.innerHTML = '<p>Loading...</p>';
     modal.style.display = 'flex';
 
@@ -218,57 +216,66 @@ function openInventory() {
     db.ref('users/' + userId).once('value').then(snapshot => {
         const u = snapshot.val();
         const inv = u.inventory || [];
-        userData.activeBuff = u.activeBuff || null;
-        userData.equippedLuck = u.equippedLuck || "";
+        userData.activeXpBuff = u.activeXpBuff || null;
+        userData.activeLuckBuff = u.activeLuckBuff || null;
 
         grid.innerHTML = '';
+        buffContainer.innerHTML = '';
 
-        // Status Bar
-        const statusDiv = document.createElement('div');
-        statusDiv.style.gridColumn = "1 / -1";
-        statusDiv.style.marginBottom = "15px";
-        statusDiv.style.padding = "10px";
-        statusDiv.style.borderRadius = "10px";
-        statusDiv.style.textAlign = "center";
+        // --- Active Buffs Display ---
+        let buffsHtml = '';
         
-        if (userData.activeBuff && Date.now() < userData.activeBuff.expireAt) {
-            const timeLeft = Math.ceil((userData.activeBuff.expireAt - Date.now()) / 60000);
-            const buffItem = ITEM_DB.find(x => x.id === userData.activeBuff.itemId);
-            statusDiv.style.background = "#d3f9d8";
-            statusDiv.style.border = "2px solid #2b8a3e";
-            statusDiv.innerHTML = `
-                <div style="font-weight:bold; color:#2b8a3e;">⚡ ACTIVE BOOST: ${buffItem ? buffItem.name : "Unknown"}</div>
-                <div style="font-size:0.9rem;">XP x${userData.activeBuff.multiplier} | Time left: ${timeLeft} mins</div>
-            `;
-        } else {
-            statusDiv.style.background = "#eee";
-            statusDiv.style.color = "#888";
-            statusDiv.innerHTML = `<small>No active XP boost. Use an item!</small>`;
+        // XP Buff
+        if (userData.activeXpBuff && Date.now() < userData.activeXpBuff.expireAt) {
+            const timeLeft = Math.ceil((userData.activeXpBuff.expireAt - Date.now()) / 60000);
+            buffsHtml += `<div style="background:#fff3bf; border:1px solid #f08c00; color:#e67700; padding:8px; border-radius:8px; margin-bottom:5px; font-size:0.85rem;"><b>⚡ XP Boost x${userData.activeXpBuff.val}</b> (${timeLeft} mins left)</div>`;
         }
-        grid.appendChild(statusDiv);
+
+        // Luck Buff
+        if (userData.activeLuckBuff && Date.now() < userData.activeLuckBuff.expireAt) {
+            const timeLeft = Math.ceil((userData.activeLuckBuff.expireAt - Date.now()) / 60000);
+            buffsHtml += `<div style="background:#d3f9d8; border:1px solid #2b8a3e; color:#2b8a3e; padding:8px; border-radius:8px; margin-bottom:5px; font-size:0.85rem;"><b>🍀 Drop Rate +${userData.activeLuckBuff.val}%</b> (${timeLeft} mins left)</div>`;
+        }
+
+        buffContainer.innerHTML = buffsHtml || `<div style="text-align:center; color:#999; font-size:0.8rem;">No active buffs</div>`;
 
         if(inv.length === 0) {
             grid.innerHTML += '<p style="grid-column: 1/-1; text-align: center; color:#999;">Bag is empty. Scan waste to find items!</p>';
             return;
         }
 
-        inv.forEach((itemObj, index) => {
+        // --- ITEM STACKING LOGIC ---
+        // 1. Group items by ID
+        const stackedItems = {};
+        inv.forEach(item => {
+            if (stackedItems[item.id]) {
+                stackedItems[item.id].count++;
+            } else {
+                stackedItems[item.id] = { ...item, count: 1 };
+            }
+        });
+
+        // 2. Render Stacked Items
+        Object.values(stackedItems).forEach((itemObj) => {
             const itemData = ITEM_DB.find(x => x.id === itemObj.id);
             if (!itemData) return;
+
             const div = document.createElement('div');
-            const isEquipped = (userData.equippedLuck === itemObj.id);
-            div.className = `item-slot rarity-${itemData.rarity.toLowerCase()} ${isEquipped ? 'equipped-slot' : ''}`;
-            let actionLabel = "";
-            if (itemData.type === "consumable") actionLabel = `<div style="position:absolute; top:5px; right:5px; background:#f08c00; color:white; font-size:0.6rem; padding:2px 5px; border-radius:4px;">USE</div>`;
-            if (isEquipped) actionLabel = `<div style="position:absolute; top:5px; left:5px; background:#4361ee; color:white; font-size:0.6rem; padding:2px 5px; border-radius:4px;">EQUIPPED</div>`;
+            div.className = `item-slot rarity-${itemData.rarity.toLowerCase()}`;
+            
+            // Show Badge if count > 1
+            const countBadge = itemObj.count > 1 ? `<div class="item-count">x${itemObj.count}</div>` : '';
 
             div.innerHTML = `
-                ${actionLabel}
+                ${countBadge}
+                <div style="position:absolute; top:5px; right:5px; background:#f08c00; color:white; font-size:0.6rem; padding:2px 5px; border-radius:4px;">USE</div>
                 <span class="item-icon">${itemData.icon}</span>
                 <div class="item-name">${itemData.name}</div>
                 <div style="font-size:0.65rem; color:#666;">${itemData.desc}</div>
             `;
-            div.onclick = () => useItem(index);
+            
+            // On Click: Use 1 item from the stack
+            div.onclick = () => useItem(itemData.id);
             grid.appendChild(div);
         });
     });
@@ -280,9 +287,7 @@ function closeInventory() { document.getElementById('inventory-modal').style.dis
 function openTutorial() { document.getElementById('tutorial-modal').style.display = 'flex'; }
 function closeTutorial() { document.getElementById('tutorial-modal').style.display = 'none'; }
 
-// ==========================================
-// 🔐 AUTH SYSTEM
-// ==========================================
+
 function toggleAuthMode() {
     isRegisterMode = !isRegisterMode;
     updateAuthText();
@@ -357,7 +362,7 @@ function handleAuthAction() {
                 const newUser = { 
                     username: userIn, password: passIn, firstName: first, lastName: last, 
                     score: 0, profilePic: tempProfilePic, 
-                    inventory: [], activeBuff: null, equippedLuck: "" 
+                    inventory: [], activeXpBuff: null, activeLuckBuff: null 
                 };
                 db.ref('users/' + safeId).set(newUser).then(() => loginSuccess(safeId, newUser));
             }
@@ -564,7 +569,7 @@ async function captureAndAnalyzeWithGroq() {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                // ✅ ใช้โมเดลเดิมตามที่คุณต้องการ (meta-llama/llama-4-scout-17b-16e-instruct)
+                // ✅ ใช้โมเดลเดิมตามที่คุณต้องการเป๊ะๆ (Llama 4 Scout)
                 model: "meta-llama/llama-4-scout-17b-16e-instruct", 
                 messages: [
                     {
@@ -623,7 +628,6 @@ async function captureAndAnalyzeWithGroq() {
         document.getElementById('scan-line').style.display = 'none';
         btn.disabled = false;
         btn.innerHTML = originalText;
-        // แสดง Error ชัดเจน (เช่น กรณี Model not found)
         alert("AI Error: " + error.message);
     }
 }
