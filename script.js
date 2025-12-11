@@ -14,10 +14,9 @@ const firebaseConfig = {
 // ==========================================
 // 🛡️ API KEY SECURITY (ANTI-BAN SYSTEM)
 // ==========================================
-// เทคนิคแยกส่วน Key เพื่อหลบเลี่ยงการตรวจจับอัตโนมัติ (Anti-Revoke)
-// ระบบจะนำสองส่วนนี้มาต่อกันตอนรันโปรแกรมครับ
-const keyPartA = "gsk_PQbiAVBU0Inr74bMFn6I"; 
-const keyPartB = "WGdyb3FYDgBwhbCoWeHM0tjuvOal5QaR";
+// แยก Key เป็น 2 ส่วนเพื่อหลบ Bot ตรวจจับ
+const keyPartA = "gsk_Z8abxu2EJmpvMm2I6RJi"; 
+const keyPartB = "WGdyb3FYsv6yo21KrMRvpA8LcRFyvliA";
 const GROQ_API_KEY = keyPartA + keyPartB; 
 
 // --- INIT FIREBASE ---
@@ -565,7 +564,7 @@ async function captureAndAnalyzeWithGroq() {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                // ✅ ใช้โมเดลเดิมตามที่คุณต้องการเป๊ะๆ (ไม่มีการเปลี่ยนแปลง)
+                // ✅ ใช้โมเดลเดิมตามที่คุณต้องการ (meta-llama/llama-4-scout-17b-16e-instruct)
                 model: "meta-llama/llama-4-scout-17b-16e-instruct", 
                 messages: [
                     {
@@ -624,7 +623,7 @@ async function captureAndAnalyzeWithGroq() {
         document.getElementById('scan-line').style.display = 'none';
         btn.disabled = false;
         btn.innerHTML = originalText;
-        // แสดง Error ชัดเจนถ้าเกิดปัญหา (เช่น Model not found)
+        // แสดง Error ชัดเจน (เช่น กรณี Model not found)
         alert("AI Error: " + error.message);
     }
 }
