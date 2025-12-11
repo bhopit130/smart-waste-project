@@ -17,8 +17,7 @@ const firebaseConfig = {
 
 const part1 = "gsk_"; 
 
-// 🔴🔴 ใส่ Key ของคุณตรงนี้ (เหมือนเดิมครับ) 🔴🔴
-// เช่น "mJYSdoyCCWnhZO9KV2LKWGdyb..."
+// 🔴🔴 ใส่ Key ของคุณตรงนี้ 🔴🔴
 const user_input_key = "mJYSdoyCCWnhZO9KV2LKWGdyb3FYWiR5214Tr0kO1mNGfvOxeLIB"; 
 
 // --- ระบบตรวจสอบและแก้ไข Key อัตโนมัติ ---
@@ -401,7 +400,7 @@ function stopScanning() {
 function switchCameraMode() { useBackCamera = !useBackCamera; if(isRunning) { stopScanning(); setTimeout(() => { startCamera(); }, 500); } }
 async function loop() { if(isRunning && webcam) { webcam.update(); animationId = window.requestAnimationFrame(loop); } }
 
-// 🔥🔥 AI LOGIC (MODEL UPDATED: 90b-vision) 🔥🔥
+// 🔥🔥 AI LOGIC (MODEL UPDATED: Llama 4 Scout) 🔥🔥
 async function captureAndAnalyzeWithGroq() {
     if (!webcam || !webcam.canvas) return;
     
@@ -426,8 +425,8 @@ async function captureAndAnalyzeWithGroq() {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                // ✅ เปลี่ยนโมเดลเป็น 90b ตัวท็อปที่ยังใช้งานได้
-                model: "llama-3.2-90b-vision-preview", 
+                // ✅ เปลี่ยนโมเดลเป็น Llama 4 Scout ตามที่ต้องการ
+                model: "llama-4-scout-17b-128e-instruct", 
                 messages: [
                     {
                         role: "user",
