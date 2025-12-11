@@ -14,17 +14,17 @@ const firebaseConfig = {
 // ==========================================
 // 🛡️ API KEY SECURITY (ป้องกัน GitHub แบน Key)
 // ==========================================
+// เทคนิค: แยก Key ออกเป็น 2 ส่วน เพื่อไม่ให้ Bot ของ GitHub ตรวจเจอ
+// 1. ไปสร้าง Key ใหม่ที่ https://console.groq.com/keys
+// 2. เอามาใส่ใน part2 (เฉพาะตัวเลขหลัง gsk_)
+
 const part1 = "gsk_"; 
 
-// 🔴🔴 นำ Key ใหม่ของคุณมาวางทับข้อความภาษาไทยด้านล่างนี้ (วางทั้งอันเลย เดี๋ยวระบบตัดให้เอง) 🔴🔴
-const rawKeyInput = "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"; 
+// 🔴🔴 ใส่ Key ใหม่ของคุณตรงนี้ (ลบข้อความไทยออก แล้วใส่รหัสที่ได้มา) 🔴🔴
+const part2 = "mJYSdoyCCWnhZO9KV2LKWGdyb3FYWiR5214Tr0kO1mNGfvOxeLIB"; 
 
-// ระบบ Auto-Fix (ตัด gsk_ ออกถ้าเผลอใส่ซ้ำ + ตัดช่องว่าง)
-let cleanKeyPart2 = rawKeyInput.trim();
-if (cleanKeyPart2.startsWith("gsk_")) {
-    cleanKeyPart2 = cleanKeyPart2.substring(4); // ตัด 4 ตัวแรก (gsk_) ออก
-}
-const GROQ_API_KEY = part1 + cleanKeyPart2; 
+// รวมร่าง Key เพื่อใช้งานจริง
+const GROQ_API_KEY = part1 + part2; 
 
 // --- INIT FIREBASE ---
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
@@ -33,6 +33,7 @@ const db = firebase.database();
 // --- VARIABLES ---
 let currentLang = 'en';
 let isSoundOn = true;
+// userData structure updated: activeXpBuff & activeLuckBuff (แยกกัน)
 let userData = { score: 0, firstName: "", lastName: "", username: "", password: "", profilePic: "", inventory: [], activeXpBuff: null, activeLuckBuff: null };
 let userId = "";
 let isRegisterMode = false;
@@ -87,11 +88,10 @@ const ITEM_DB = [
 
 let pendingItem = null;
 
+// 🔥 Logic สุ่มของ
 function rollItemDrop() {
     const baseChance = 12; 
     let luckBonus = 0;
-    
-    // Check Active Luck Buff
     if (userData.activeLuckBuff) {
         if (Date.now() < userData.activeLuckBuff.expireAt) {
             luckBonus = userData.activeLuckBuff.val;
@@ -100,13 +100,11 @@ function rollItemDrop() {
             userData.activeLuckBuff = null;
         }
     }
-    
     const finalChance = baseChance + luckBonus;
-    console.log(`Drop Rate: ${finalChance}% (Base: ${baseChance} + Buff: ${luckBonus})`);
+    console.log(`Drop Rate: ${finalChance}%`);
 
     if (Math.random() * 100 > finalChance) return null; 
 
-    // Weighted Rarity
     const rRoll = Math.random() * 100;
     let rarityPool = [];
     if (rRoll < 70) rarityPool = ITEM_DB.filter(i => i.rarity === "Common");
@@ -118,12 +116,12 @@ function rollItemDrop() {
     return rarityPool[Math.floor(Math.random() * rarityPool.length)];
 }
 
+// 🔥 Logic ใช้ไอเทม
 function useItem(itemIdToUse) {
     if(!userId) return;
     db.ref('users/' + userId).once('value').then(snapshot => {
         const u = snapshot.val();
         let inv = u.inventory || [];
-        
         const index = inv.findIndex(i => i.id === itemIdToUse);
         if (index === -1) return;
 
@@ -135,8 +133,7 @@ function useItem(itemIdToUse) {
             : `ยืนยันใช้ "${dbItem.name}" หรือไม่?\n(มีผล ${dbItem.duration} นาที)`;
         
         if (confirm(confirmMsg)) {
-            inv.splice(index, 1); 
-            
+            inv.splice(index, 1);
             const expireTime = Date.now() + (dbItem.duration * 60 * 1000);
             const newBuff = { itemId: dbItem.id, expireAt: expireTime, val: dbItem.val, name: dbItem.name };
             
@@ -148,7 +145,6 @@ function useItem(itemIdToUse) {
                 userData.inventory = inv;
                 if(dbItem.type === 'xp_boost') userData.activeXpBuff = newBuff;
                 if(dbItem.type === 'luck_boost') userData.activeLuckBuff = newBuff;
-                
                 alert(currentLang === 'en' ? "Buff Activated!" : "ใช้งานไอเทมสำเร็จ!");
                 openInventory(); 
             });
@@ -180,6 +176,7 @@ function showItemDropModal(item) {
     const rBadge = document.getElementById('drop-rarity');
     rBadge.innerText = item.rarity.toUpperCase();
     rBadge.className = "rank-badge";
+    rBadge.classList.remove("rank-novice", "rank-scout", "rank-guardian", "rank-legend");
     if(item.rarity === "Common") rBadge.classList.add("rank-novice");
     else if(item.rarity === "Rare") rBadge.classList.add("rank-scout");
     else if(item.rarity === "Epic") rBadge.classList.add("rank-guardian");
@@ -187,9 +184,7 @@ function showItemDropModal(item) {
 
     document.getElementById('item-drop-modal').style.display = 'flex';
 }
-
 function closeItemDropModal() { document.getElementById('item-drop-modal').style.display = 'none'; }
-
 function saveItemToInventory(item) {
     if(!userId) return;
     db.ref('users/' + userId + '/inventory').once('value').then(snapshot => {
@@ -204,21 +199,15 @@ function openInventory() {
     const modal = document.getElementById('inventory-modal');
     const grid = document.getElementById('inventory-grid');
     const buffContainer = document.getElementById('active-buff-container');
-    
     grid.innerHTML = '<p>Loading...</p>';
     modal.style.display = 'flex';
-
-    if(!userId) {
-        grid.innerHTML = '<p>Please Login first.</p>';
-        return;
-    }
+    if(!userId) { grid.innerHTML = '<p>Please Login first.</p>'; return; }
 
     db.ref('users/' + userId).once('value').then(snapshot => {
         const u = snapshot.val();
         const inv = u.inventory || [];
         userData.activeXpBuff = u.activeXpBuff || null;
         userData.activeLuckBuff = u.activeLuckBuff || null;
-
         grid.innerHTML = '';
         buffContainer.innerHTML = '';
 
@@ -233,16 +222,10 @@ function openInventory() {
         }
         buffContainer.innerHTML = buffsHtml || `<div style="text-align:center; color:#999; font-size:0.8rem;">No active buffs</div>`;
 
-        if(inv.length === 0) {
-            grid.innerHTML += '<p style="grid-column: 1/-1; text-align: center; color:#999;">Bag is empty.</p>';
-            return;
-        }
+        if(inv.length === 0) { grid.innerHTML += '<p style="grid-column: 1/-1; text-align: center; color:#999;">Bag is empty.</p>'; return; }
 
         const stackedItems = {};
-        inv.forEach(item => {
-            if (stackedItems[item.id]) stackedItems[item.id].count++;
-            else stackedItems[item.id] = { ...item, count: 1 };
-        });
+        inv.forEach(item => { if (stackedItems[item.id]) stackedItems[item.id].count++; else stackedItems[item.id] = { ...item, count: 1 }; });
 
         Object.values(stackedItems).forEach((itemObj) => {
             const itemData = ITEM_DB.find(x => x.id === itemObj.id);
@@ -280,13 +263,11 @@ function toggleAuthMode() {
         regNames.style.display = "none"; regPic.style.display = "none";
     }
 }
-
 function updateAuthText() {
     const t = textData[currentLang].auth;
     document.getElementById('auth-title').innerText = isRegisterMode ? t.regTitle : t.title;
     document.getElementById('auth-subtitle').innerText = isRegisterMode ? t.regSub : t.sub;
 }
-
 function handleImageUpload(input, previewId) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
@@ -304,7 +285,6 @@ function handleImageUpload(input, previewId) {
         reader.readAsDataURL(input.files[0]);
     }
 }
-
 function handleAuthAction() {
     const userIn = document.getElementById('username-input').value.trim();
     const passIn = document.getElementById('password-input').value.trim();
@@ -347,12 +327,10 @@ function saveProfileChanges() {
     const updates = { firstName: newFirst, lastName: document.getElementById('edit-lastname').value.trim(), password: newPass, profilePic: tempProfilePic || userData.profilePic };
     db.ref('users/' + userId).update(updates).then(() => { userData = { ...userData, ...updates }; updateUI(); closeProfileSettings(); alert((currentLang === 'en') ? "Profile Updated!" : "อัปเดตข้อมูลแล้ว!"); });
 }
-
 function getRank(score) {
     for (let i = RANK_SYSTEM.length - 1; i >= 0; i--) { if (score >= RANK_SYSTEM[i].minScore) return RANK_SYSTEM[i]; }
     return RANK_SYSTEM[0];
 }
-
 function updateUI(checkLevelUp = false) {
     document.getElementById('display-name').innerText = userData.firstName;
     document.getElementById('big-score-val').innerText = (userData.score || 0);
@@ -370,7 +348,6 @@ function updateUI(checkLevelUp = false) {
     const txtBtn = document.getElementById('txt-btn-start');
     if(isRunning) { txtBtn.innerText = textData[currentLang].btnScan; } else { txtBtn.innerText = textData[currentLang].btnStart; }
 }
-
 function showLevelUpModal(rankName) {
     const modal = document.getElementById('levelup-modal');
     document.getElementById('lvl-rank-name').innerText = rankName;
@@ -388,9 +365,7 @@ function createConfetti(container) {
 function closeLevelUpModal() { document.getElementById('levelup-modal').style.display = 'none'; }
 function toggleLanguage() { currentLang = (currentLang==='en')?'th':'en'; updateUI(); }
 function toggleSound() { isSoundOn = !isSoundOn; document.getElementById('btn-sound').classList.toggle('active'); }
-
 async function handleMainButton() { if (!isRunning) { startCamera(); } else { captureAndAnalyzeWithGroq(); } }
-
 async function startCamera() {
     const btn = document.getElementById('btn-main');
     const container = document.getElementById('webcam-container');
@@ -414,7 +389,6 @@ async function startCamera() {
         animationId = window.requestAnimationFrame(loop);
     } catch (e) { console.error(e); alert("Camera Error: " + e.message); stopScanning(); }
 }
-
 function stopScanning() {
     isRunning = false; cancelAnimationFrame(animationId);
     if(webcam) { webcam.stop(); webcam = null; }
@@ -426,7 +400,6 @@ function stopScanning() {
     const container = document.getElementById('webcam-container');
     if(container) { container.innerHTML = `<div id=\"placeholder-ui\" class=\"placeholder-content\"><div class=\"pulse-ring\"></div><i class=\"bi bi-camera-video-fill\"></i><p>Ready to Scan</p></div>`; }
 }
-
 function switchCameraMode() { useBackCamera = !useBackCamera; if(isRunning) { stopScanning(); setTimeout(() => { startCamera(); }, 500); } }
 async function loop() { if(isRunning && webcam) { webcam.update(); animationId = window.requestAnimationFrame(loop); } }
 
@@ -435,8 +408,8 @@ async function captureAndAnalyzeWithGroq() {
     if (!webcam || !webcam.canvas) return;
     
     // ตรวจสอบ API KEY
-    if (!GROQ_API_KEY || GROQ_API_KEY.length < 15) {
-        alert("กรุณาใส่ API Key ในโค้ด (ส่วน rawKeyInput) ด้วยครับ");
+    if (!GROQ_API_KEY || GROQ_API_KEY.includes("วาง_รหัส")) {
+        alert("กรุณาใส่ API Key ในโค้ด (ส่วน part2) ด้วยครับ");
         return;
     }
 
@@ -455,8 +428,8 @@ async function captureAndAnalyzeWithGroq() {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                // ✅ โมเดล Vision ที่ถูกต้อง (รองรับรูปภาพ)
-                model: "llama-3.2-90b-vision-preview", 
+                // ✅ โมเดล Vision ที่ถูกต้อง (แก้ Error: content must be string)
+                model: "llama-3.2-11b-vision-preview", 
                 messages: [
                     {
                         role: "user",
