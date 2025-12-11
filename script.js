@@ -567,6 +567,8 @@ async function loop() {
 
 async function captureAndAnalyzeWithGroq() {
     if (!webcam || !webcam.canvas) return;
+    
+    // ตรวจสอบ API Key
     if (!GROQ_API_KEY || GROQ_API_KEY.includes("YOUR_GROQ")) {
         alert("Please set your GROQ_API_KEY in script.js first!");
         return;
@@ -587,7 +589,8 @@ async function captureAndAnalyzeWithGroq() {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: "meta-llama/llama-4-scout-17b-16e-instruct", 
+                // ✅ แก้ไขชื่อโมเดลให้ถูกต้องตรงนี้ครับ
+                model: "llama-3.3-70b-versatile", 
                 messages: [
                     {
                         role: "user",
@@ -619,12 +622,19 @@ async function captureAndAnalyzeWithGroq() {
                         ]
                     }
                 ],
-                temperature: 0.1, max_tokens: 500, response_format: { type: "json_object" }
+                temperature: 0.1, 
+                max_tokens: 500, 
+                response_format: { type: "json_object" }
             })
         });
 
         const json = await response.json();
-        if (json.error) throw new Error(json.error.message);
+        
+        // เช็ค Error จาก Groq
+        if (json.error) {
+            console.error("Groq API Error:", json.error);
+            throw new Error(json.error.message); // จะเด้งไปที่ catch ด้านล่าง
+        }
 
         const aiContent = json.choices[0].message.content;
         const resultData = JSON.parse(aiContent);
@@ -641,11 +651,12 @@ async function captureAndAnalyzeWithGroq() {
         }
 
     } catch (error) {
-        console.error("AI Error:", error);
+        console.error("App Error:", error);
         document.getElementById('scan-line').style.display = 'none';
         btn.disabled = false;
         btn.innerHTML = originalText;
-        alert("AI Error: " + error.message);
+        // แสดง Error ชัดๆ
+        alert("System Error: " + error.message);
     }
 }
 
@@ -708,4 +719,5 @@ function closeResultModal() {
 
 document.getElementById('username-input').addEventListener("keyup", function(event) {
     if (event.key === "Enter") handleAuthAction();
+
 });
