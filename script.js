@@ -17,12 +17,12 @@ const firebaseConfig = {
 
 const part1 = "gsk_"; 
 
-// 🔴🔴 แนะนำ: ให้ไปสร้าง Key ใหม่ที่ Groq อีกรอบ แล้วเอามาวางทับตรงนี้ครับ 🔴🔴
-// วางลงไปทั้งอันเลยก็ได้ครับ (เช่น "gsk_1234...") เดี๋ยวระบบจะจัดการตัดส่วนเกินให้เอง
-const user_input_key = "mJYSdoyCCWnhZO9KV2LKWGdyb3FYWiR5214Tr0kO1mNGfvOxeLIB"; // <-- วาง Key ของคุณในเครื่องหมายคำพูดนี้
+// 🔴🔴 ใส่ Key ของคุณตรงนี้ (เหมือนเดิมครับ) 🔴🔴
+// เช่น "mJYSdoyCCWnhZO9KV2LKWGdyb..."
+const user_input_key = "mJYSdoyCCWnhZO9KV2LKWGdyb3FYWiR5214Tr0kO1mNGfvOxeLIB"; 
 
 // --- ระบบตรวจสอบและแก้ไข Key อัตโนมัติ ---
-let finalKey = user_input_key.trim(); // ลบช่องว่างหน้า-หลัง (ถ้ามี)
+let finalKey = user_input_key.trim(); // ลบช่องว่างหน้า-หลัง
 if (finalKey.startsWith("gsk_")) {
     finalKey = finalKey.substring(4); // ถ้าเผลอใส่ gsk_ มาด้วย ให้ตัดออก
 }
@@ -30,7 +30,6 @@ if (finalKey.startsWith("gsk_")) {
 // รวมร่าง Key ที่ถูกต้อง
 const GROQ_API_KEY = part1 + finalKey; 
 
-// ==========================================
 // --- INIT FIREBASE ---
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 const db = firebase.database();
@@ -38,7 +37,6 @@ const db = firebase.database();
 // --- VARIABLES ---
 let currentLang = 'en';
 let isSoundOn = true;
-// userData structure updated: activeXpBuff & activeLuckBuff (แยกกัน)
 let userData = { score: 0, firstName: "", lastName: "", username: "", password: "", profilePic: "", inventory: [], activeXpBuff: null, activeLuckBuff: null };
 let userId = "";
 let isRegisterMode = false;
@@ -76,16 +74,14 @@ const RANK_SYSTEM = [
 ];
 
 // ==========================================
-// 🎒 ITEM SYSTEM (REBALANCED & STACKABLE)
+// 🎒 ITEM SYSTEM
 // ==========================================
 
 const ITEM_DB = [
-    // --- XP BOOSTERS ---
     { id: "xp01", name: "Energy Drink", icon: "⚡", rarity: "Common", desc: "XP x1.5 (10 Mins)", type: "xp_boost", duration: 10, val: 1.5 },
     { id: "xp02", name: "Textbook", icon: "📚", rarity: "Rare", desc: "XP x2.0 (20 Mins)", type: "xp_boost", duration: 20, val: 2.0 },
     { id: "xp03", name: "Golden Brain", icon: "🧠", rarity: "Epic", desc: "XP x3.0 (30 Mins)", type: "xp_boost", duration: 30, val: 3.0 },
     { id: "xp04", name: "Alien Chip", icon: "👽", rarity: "Legendary", desc: "XP x5.0 (1 Hour)", type: "xp_boost", duration: 60, val: 5.0 },
-    // --- LUCK CHARMS ---
     { id: "luk01", name: "Glass Eye", icon: "👁️", rarity: "Common", desc: "Drop Chance +5% (10 Mins)", type: "luck_boost", duration: 10, val: 5 },
     { id: "luk02", name: "Magnet", icon: "🧲", rarity: "Rare", desc: "Drop Chance +10% (20 Mins)", type: "luck_boost", duration: 20, val: 10 },
     { id: "luk03", name: "Lucky Cat", icon: "🐱", rarity: "Epic", desc: "Drop Chance +20% (30 Mins)", type: "luck_boost", duration: 30, val: 20 }
@@ -93,7 +89,6 @@ const ITEM_DB = [
 
 let pendingItem = null;
 
-// 🔥 Logic สุ่มของ
 function rollItemDrop() {
     const baseChance = 12; 
     let luckBonus = 0;
@@ -121,7 +116,6 @@ function rollItemDrop() {
     return rarityPool[Math.floor(Math.random() * rarityPool.length)];
 }
 
-// 🔥 Logic ใช้ไอเทม
 function useItem(itemIdToUse) {
     if(!userId) return;
     db.ref('users/' + userId).once('value').then(snapshot => {
@@ -129,7 +123,6 @@ function useItem(itemIdToUse) {
         let inv = u.inventory || [];
         const index = inv.findIndex(i => i.id === itemIdToUse);
         if (index === -1) return;
-
         const dbItem = ITEM_DB.find(x => x.id === itemIdToUse);
         if (!dbItem) return;
 
@@ -408,13 +401,13 @@ function stopScanning() {
 function switchCameraMode() { useBackCamera = !useBackCamera; if(isRunning) { stopScanning(); setTimeout(() => { startCamera(); }, 500); } }
 async function loop() { if(isRunning && webcam) { webcam.update(); animationId = window.requestAnimationFrame(loop); } }
 
-// 🔥🔥 AI LOGIC (MODEL: Llama-3.2 Vision) 🔥🔥
+// 🔥🔥 AI LOGIC (MODEL UPDATED: 90b-vision) 🔥🔥
 async function captureAndAnalyzeWithGroq() {
     if (!webcam || !webcam.canvas) return;
     
     // ตรวจสอบ API KEY
-    if (!GROQ_API_KEY || GROQ_API_KEY.includes("วาง_รหัส")) {
-        alert("กรุณาใส่ API Key ในโค้ด (ส่วน part2) ด้วยครับ");
+    if (!GROQ_API_KEY || GROQ_API_KEY.includes("วาง_Key")) {
+        alert("กรุณาใส่ API Key ในโค้ด (ส่วน user_input_key) ด้วยครับ");
         return;
     }
 
@@ -433,8 +426,8 @@ async function captureAndAnalyzeWithGroq() {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                // ✅ โมเดล Vision ที่ถูกต้อง (แก้ Error: content must be string)
-                model: "llama-3.2-11b-vision-preview", 
+                // ✅ เปลี่ยนโมเดลเป็น 90b ตัวท็อปที่ยังใช้งานได้
+                model: "llama-3.2-90b-vision-preview", 
                 messages: [
                     {
                         role: "user",
