@@ -14,15 +14,17 @@ const firebaseConfig = {
 // ==========================================
 // 🛡️ API KEY SECURITY (ป้องกัน GitHub แบน Key)
 // ==========================================
-// วิธีใช้: ไปสร้าง Key ใหม่ที่ Groq Cloud แล้วก๊อปปี้มา
-// สมมติ Key คือ "gsk_ABC123456789"
-// ให้เอาเฉพาะ "ABC123456789" มาใส่ใน part2 ครับ
-
 const part1 = "gsk_"; 
-const part2 = "4eHscb1WekVsnwfh0oUIWGdyb3FYjxdYpn7DvMEcT8iR1ydDxGx8"; // 🔴🔴 <-- แก้ตรงนี้ครับ
 
-// รวมร่าง Key (ระบบ GitHub จะตรวจไม่เจอเพราะมันถูกแยกกันอยู่)
-const GROQ_API_KEY = part1 + part2; 
+// 🔴🔴 นำ Key ใหม่ของคุณมาวางทับข้อความภาษาไทยด้านล่างนี้ (วางทั้งอันเลย เดี๋ยวระบบตัดให้เอง) 🔴🔴
+const rawKeyInput = "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"; 
+
+// ระบบ Auto-Fix (ตัด gsk_ ออกถ้าเผลอใส่ซ้ำ + ตัดช่องว่าง)
+let cleanKeyPart2 = rawKeyInput.trim();
+if (cleanKeyPart2.startsWith("gsk_")) {
+    cleanKeyPart2 = cleanKeyPart2.substring(4); // ตัด 4 ตัวแรก (gsk_) ออก
+}
+const GROQ_API_KEY = part1 + cleanKeyPart2; 
 
 // --- INIT FIREBASE ---
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
@@ -133,7 +135,7 @@ function useItem(itemIdToUse) {
             : `ยืนยันใช้ "${dbItem.name}" หรือไม่?\n(มีผล ${dbItem.duration} นาที)`;
         
         if (confirm(confirmMsg)) {
-            inv.splice(index, 1); // Remove 1 item
+            inv.splice(index, 1); 
             
             const expireTime = Date.now() + (dbItem.duration * 60 * 1000);
             const newBuff = { itemId: dbItem.id, expireAt: expireTime, val: dbItem.val, name: dbItem.name };
@@ -428,13 +430,13 @@ function stopScanning() {
 function switchCameraMode() { useBackCamera = !useBackCamera; if(isRunning) { stopScanning(); setTimeout(() => { startCamera(); }, 500); } }
 async function loop() { if(isRunning && webcam) { webcam.update(); animationId = window.requestAnimationFrame(loop); } }
 
-// 🔥🔥 AI LOGIC (WITH SPLIT KEY STRATEGY) 🔥🔥
+// 🔥🔥 AI LOGIC (MODEL: Llama-3.2 Vision) 🔥🔥
 async function captureAndAnalyzeWithGroq() {
     if (!webcam || !webcam.canvas) return;
     
-    // ตรวจสอบความเรียบร้อย (เผื่อลืมใส่)
+    // ตรวจสอบ API KEY
     if (!GROQ_API_KEY || GROQ_API_KEY.length < 15) {
-        alert("กรุณาใส่ API Key ในโค้ด (ส่วน part2) ด้วยครับ");
+        alert("กรุณาใส่ API Key ในโค้ด (ส่วน rawKeyInput) ด้วยครับ");
         return;
     }
 
@@ -453,7 +455,8 @@ async function captureAndAnalyzeWithGroq() {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: "llama-3.3-70b-versatile", 
+                // ✅ โมเดล Vision ที่ถูกต้อง (รองรับรูปภาพ)
+                model: "llama-3.2-90b-vision-preview", 
                 messages: [
                     {
                         role: "user",
