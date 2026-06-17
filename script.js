@@ -1,12 +1,11 @@
 
 const firebaseConfig = {
-    apiKey: "AIzaSyA3UTjmzolQs5HHejpzfga0px6uxnADuSM", 
-    authDomain: "smart-waste-deebuk.firebaseapp.com",
-    databaseURL: "https://smart-waste-deebuk-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "smart-waste-deebuk",
-    storageBucket: "smart-waste-deebuk.firebasestorage.app",
-    messagingSenderId: "11316279684",
-    appId: "1:11316279684:web:5cee12dd58e7b5962c05d1"
+  apiKey: "AIzaSyDZvkVWeZKYcVAzMIxViwq2l7PVlSb6S3M",
+  authDomain: "smart-waste-db.firebaseapp.com",
+  projectId: "smart-waste-db",
+  storageBucket: "smart-waste-db.firebasestorage.app",
+  messagingSenderId: "744812148870",
+  appId: "1:744812148870:web:162d9d749d623970887907"
 };
 
 
