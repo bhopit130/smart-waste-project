@@ -1,13 +1,12 @@
-
 const firebaseConfig = {
   apiKey: "AIzaSyDZvkVWeZKYcVAzMIxViwq2l7PVlSb6S3M",
   authDomain: "smart-waste-db.firebaseapp.com",
+  databaseURL: "https://smart-waste-db-default-rtdb.asia-southeast1.firebasedatabase.app", // 👉 เพิ่มบรรทัดนี้เข้าไปครับ
   projectId: "smart-waste-db",
   storageBucket: "smart-waste-db.firebasestorage.app",
   messagingSenderId: "744812148870",
   appId: "1:744812148870:web:162d9d749d623970887907"
 };
-
 
 
 const keyPartA = "gsk_Z8abxu2EJmpvMm2I6RJi"; 
