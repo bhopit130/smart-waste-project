@@ -691,13 +691,3 @@ document.getElementById('username-input').addEventListener("keyup", function(eve
     if (event.key === "Enter") handleAuthAction();
 });
 
-// --- โค้ดสำหรับทดสอบการเชื่อมต่อ Firebase ---
-const connectedRef = db.ref(".info/connected");
-connectedRef.on("value", (snap) => {
-  if (snap.val() === true) {
-    console.log("🟢 เชื่อมต่อ Firebase Realtime Database สำเร็จแล้ว!");
-    alert("เชื่อมต่อ Firebase สำเร็จ!"); // แจ้งเตือนบนหน้าจอให้เห็นชัดๆ
-  } else {
-    console.log("🔴 กำลังพยายามเชื่อมต่อ หรือ เชื่อมต่อไม่ได้");
-  }
-});
