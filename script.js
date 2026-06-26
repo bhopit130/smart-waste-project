@@ -9,9 +9,38 @@ const firebaseConfig = {
 };
 
 
-const keyPartA = "gsk_Z8abxu2EJmpvMm2I6RJi"; 
-const keyPartB = "WGdyb3FYsv6yo21KrMRvpA8LcRFyvliA";
-const GROQ_API_KEY = keyPartA + keyPartB; 
+// ============================================================
+// 🔑 MULTI-KEY LOAD BALANCING — เพิ่ม Key ได้เรื่อยๆ ที่นี่
+// ============================================================
+const GROQ_API_KEYS = [
+  "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", // Key 1 (default)
+  // "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",  // Key 2 — ใส่ key เพิ่มได้เลย
+  // "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",  // Key 3
+];
+
+// ตัวติดตาม Key ปัจจุบัน
+let _groqKeyIndex = 0;
+
+/** คืนค่า key ตัวถัดไปแบบวนลูป (Round-Robin) */
+function getNextGroqKey() {
+  const key = GROQ_API_KEYS[_groqKeyIndex % GROQ_API_KEYS.length];
+  _groqKeyIndex++;
+  return key;
+}
+
+// ============================================================
+// ⏱️ COOLDOWN CONFIG
+// ============================================================
+const SCAN_COOLDOWN_MS = 8000;   // 8 วินาที cooldown ระหว่างการสแกน
+let lastScanTime = 0;            // timestamp ของการสแกนล่าสุด
+let isScanInProgress = false;    // ป้องกันการกด 2 ครั้งซ้อน
+
+// ============================================================
+// 🖼️ IMAGE RESIZE CONFIG
+// ============================================================
+const IMG_MAX_PX   = 512;   // ลดจาก 600→512 (ลด Token ~30% แต่ AI ยังแม่น)
+const IMG_QUALITY  = 0.65;  // ลดจาก 0.7→0.65 (ลดขนาดไฟล์)
+
 
 // --- INIT FIREBASE ---
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
@@ -486,7 +515,7 @@ async function startCamera() {
         if (webcam && webcam.canvas) { webcam.stop(); webcam = null; }
         container.innerHTML = ""; 
 
-        const size = 600; 
+        const size = IMG_MAX_PX;   // ใช้ค่าเดียวกับ resize config (512px)
         const flip = !useBackCamera; 
         
         webcam = new tmImage.Webcam(size, size, flip);
@@ -543,32 +572,83 @@ async function loop() {
     if(isRunning && webcam) { webcam.update(); animationId = window.requestAnimationFrame(loop); }
 }
 
+// ============================================================
+// 🖼️ HELPER: ย่อภาพก่อนส่ง AI (ลด Token โดยไม่ทำให้ผลแย่ลง)
+// ============================================================
+function resizeCanvasForAI(srcCanvas) {
+    const w = srcCanvas.width, h = srcCanvas.height;
+    const maxPx = IMG_MAX_PX;
+
+    // ถ้าภาพเล็กอยู่แล้ว ส่งตรงๆ ได้เลย
+    if (w <= maxPx && h <= maxPx) {
+        return srcCanvas.toDataURL("image/jpeg", IMG_QUALITY);
+    }
+
+    // คำนวณ scale ใหม่โดยรักษา aspect ratio
+    const scale = maxPx / Math.max(w, h);
+    const newW = Math.round(w * scale);
+    const newH = Math.round(h * scale);
+
+    const offscreen = document.createElement('canvas');
+    offscreen.width  = newW;
+    offscreen.height = newH;
+    offscreen.getContext('2d').drawImage(srcCanvas, 0, 0, newW, newH);
+
+    return offscreen.toDataURL("image/jpeg", IMG_QUALITY);
+}
+
+// ============================================================
+// 🤖 MAIN SCAN FUNCTION — Key Rotation + Cooldown + Resize
+// ============================================================
 async function captureAndAnalyzeWithGroq() {
     if (!webcam || !webcam.canvas) return;
-    
-    // Check Key (ใช้ตัวแปรที่รวมร่างมาแล้ว)
-    if (!GROQ_API_KEY || GROQ_API_KEY.includes("YOUR_GROQ")) {
+
+    // ─── Guard: ป้องกันกดซ้อน ───────────────────────────────
+    if (isScanInProgress) return;
+
+    // ─── Guard: Cooldown ─────────────────────────────────────
+    const now = Date.now();
+    const elapsed = now - lastScanTime;
+    if (elapsed < SCAN_COOLDOWN_MS) {
+        const wait = Math.ceil((SCAN_COOLDOWN_MS - elapsed) / 1000);
+        const msg = currentLang === 'en'
+            ? `Please wait ${wait}s before scanning again.`
+            : `รอ ${wait} วินาทีก่อนสแกนใหม่นะครับ`;
+        alert(msg);
+        return;
+    }
+
+    // ─── Guard: ตรวจว่ามี Key ───────────────────────────────
+    if (!GROQ_API_KEYS.length || GROQ_API_KEYS[0].includes("YOUR_GROQ")) {
         alert("Please set your GROQ_API_KEY in script.js first!");
         return;
     }
 
+    // ─── UI: เริ่มโหลด ───────────────────────────────────────
+    isScanInProgress = true;
+    lastScanTime = now;
     const btn = document.getElementById('btn-main');
     const originalText = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${textData[currentLang].analyzing}`;
     document.getElementById('scan-line').style.display = 'block';
 
+    // ─── ย่อภาพก่อนส่ง ──────────────────────────────────────
+    const imageBase64 = resizeCanvasForAI(webcam.canvas);
+
+    // ─── เลือก Key แบบ Round-Robin ───────────────────────────
+    const usedKey = getNextGroqKey();
+    console.log(`[Scan] Using Key index ${(_groqKeyIndex - 1) % GROQ_API_KEYS.length + 1}/${GROQ_API_KEYS.length}`);
+
     try {
-        const imageBase64 = webcam.canvas.toDataURL("image/jpeg", 0.7);
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${GROQ_API_KEY}`,
+                "Authorization": `Bearer ${usedKey}`,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                // ✅ ใช้โมเดลเดิมตามที่คุณต้องการเป๊ะๆ (Llama 4 Scout)
-                model: "meta-llama/llama-4-scout-17b-16e-instruct", 
+                model: "meta-llama/llama-4-scout-17b-16e-instruct",
                 messages: [
                     {
                         role: "user",
@@ -576,57 +656,110 @@ async function captureAndAnalyzeWithGroq() {
                             {
                                 type: "text",
                                 text: `Identify the waste object in this image.
-                                Classify it STRICTLY based on Thai waste sorting rules:
-                                1. "Recyclable" (Yellow Bin): Clean plastic bottles, glass, metal cans, paper, cardboard.
-                                2. "Organic" (Green Bin): Food scraps, fruit peels, leaves.
-                                3. "Hazardous" (Red Bin): Batteries, electronics, light bulbs, chemicals, medicine containers.
-                                4. "General" (Blue Bin): Dirty plastic, snack wrappers, foam, tissues, wooden sticks, toothpaste tubes.
+Classify it STRICTLY based on Thai waste sorting rules:
+1. "Recyclable" (Yellow Bin): Clean plastic bottles, glass, metal cans, paper, cardboard.
+2. "Organic" (Green Bin): Food scraps, fruit peels, leaves.
+3. "Hazardous" (Red Bin): Batteries, electronics, light bulbs, chemicals, medicine containers.
+4. "General" (Blue Bin): Dirty plastic, snack wrappers, foam, tissues, wooden sticks, toothpaste tubes.
 
-                                Return JSON ONLY with this structure:
-                                {
-                                  "category": "Recyclable" OR "Organic" OR "Hazardous" OR "General",
-                                  "name_en": "Short name in English",
-                                  "name_th": "Short name in Thai",
-                                  "desc_en": "Brief description in English",
-                                  "desc_th": "Brief description in Thai",
-                                  "howto_en": "How to dispose in English",
-                                  "howto_th": "How to dispose in Thai",
-                                  "knowledge_en": "One fun fact in English",
-                                  "knowledge_th": "One fun fact in Thai"
-                                }
-                                If no waste is found, set category to "Unknown".`
+Return JSON ONLY with this exact structure, no markdown:
+{"category":"Recyclable|Organic|Hazardous|General|Unknown","name_en":"...","name_th":"...","desc_en":"...","desc_th":"...","howto_en":"...","howto_th":"...","knowledge_en":"...","knowledge_th":"..."}`
                             },
                             { type: "image_url", image_url: { url: imageBase64 } }
                         ]
                     }
                 ],
-                temperature: 0.1, max_tokens: 500, response_format: { type: "json_object" }
+                temperature: 0.1,
+                max_tokens: 400,
+                response_format: { type: "json_object" }
             })
         });
+
+        // ─── Handle Rate Limit (429) ── ลองตัด Key ถัดไป ─────
+        if (response.status === 429) {
+            const retryKey = getNextGroqKey();
+            console.warn(`[Scan] 429 Rate Limit! Retrying with next key...`);
+
+            const retryRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${retryKey}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                {
+                                    type: "text",
+                                    text: `Identify the waste object in this image.
+Classify STRICTLY based on Thai waste sorting rules:
+1. "Recyclable": Clean plastic, glass, metal, paper.
+2. "Organic": Food scraps, fruit peels, leaves.
+3. "Hazardous": Batteries, electronics, chemicals.
+4. "General": Dirty plastic, foam, tissues.
+Return JSON ONLY: {"category":"...","name_en":"...","name_th":"...","desc_en":"...","desc_th":"...","howto_en":"...","howto_th":"...","knowledge_en":"...","knowledge_th":"..."}`
+                                },
+                                { type: "image_url", image_url: { url: imageBase64 } }
+                            ]
+                        }
+                    ],
+                    temperature: 0.1,
+                    max_tokens: 400,
+                    response_format: { type: "json_object" }
+                })
+            });
+
+            if (!retryRes.ok) {
+                const errJson = await retryRes.json().catch(() => ({}));
+                throw new Error(errJson.error?.message || `HTTP ${retryRes.status} — Rate limit on all keys. Please wait a moment.`);
+            }
+
+            const retryJson = await retryRes.json();
+            if (retryJson.error) throw new Error(retryJson.error.message);
+            handleAIResult(JSON.parse(retryJson.choices[0].message.content), btn, originalText);
+            return;
+        }
 
         const json = await response.json();
         if (json.error) throw new Error(json.error.message);
 
-        const aiContent = json.choices[0].message.content;
-        const resultData = JSON.parse(aiContent);
-
-        document.getElementById('scan-line').style.display = 'none';
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-
-        if (resultData.category === "Unknown") {
-            alert(currentLang === 'en' ? "No waste detected." : "ไม่พบขยะในภาพ");
-        } else {
-            pendingItem = rollItemDrop(); 
-            showResultPopupFromAI(resultData);
-        }
+        const resultData = JSON.parse(json.choices[0].message.content);
+        handleAIResult(resultData, btn, originalText);
 
     } catch (error) {
         console.error("AI Error:", error);
         document.getElementById('scan-line').style.display = 'none';
         btn.disabled = false;
         btn.innerHTML = originalText;
-        alert("AI Error: " + error.message);
+
+        // ── แสดง Error ที่อ่านง่ายขึ้น ───────────────────────
+        const isRateLimit = error.message && error.message.toLowerCase().includes("rate limit");
+        const userMsg = isRateLimit
+            ? (currentLang === 'en'
+                ? "⚠️ AI is busy right now. Please wait 10–15 seconds and try again."
+                : "⚠️ AI ยุ่งอยู่ กรุณารอ 10-15 วินาทีแล้วลองใหม่ครับ")
+            : "AI Error: " + error.message;
+
+        alert(userMsg);
+    } finally {
+        isScanInProgress = false;
+    }
+}
+
+/** แยก logic แสดงผลออกมาเพื่อ reuse ใน retry */
+function handleAIResult(resultData, btn, originalText) {
+    document.getElementById('scan-line').style.display = 'none';
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+
+    if (!resultData || resultData.category === "Unknown") {
+        alert(currentLang === 'en' ? "No waste detected. Try again." : "ไม่พบขยะในภาพ ลองใหม่อีกครั้ง");
+    } else {
+        pendingItem = rollItemDrop();
+        showResultPopupFromAI(resultData);
     }
 }
 
