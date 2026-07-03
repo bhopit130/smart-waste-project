@@ -15,7 +15,8 @@ const firebaseConfig = {
 const GROQ_API_KEYS = [
   "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",
   "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",  // Key 2 — ใส่ key เพิ่มได้เลย
-  "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",  // Key 3
+  "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",
+  "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",   // Key 4
 ];
 
 // ตัวติดตาม Key ปัจจุบัน
