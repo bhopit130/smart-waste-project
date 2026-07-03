@@ -13,7 +13,7 @@ const firebaseConfig = {
 // 🔑 MULTI-KEY LOAD BALANCING — เพิ่ม Key ได้เรื่อยๆ ที่นี่
 // ============================================================
 const GROQ_API_KEYS = [
-  "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"
+  "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",
   "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",  // Key 2 — ใส่ key เพิ่มได้เลย
   "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",  // Key 3
 ];
