@@ -14,7 +14,7 @@ const firebaseConfig = {
 // ============================================================
 const GROQ_API_KEYS = [
   
-  "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",  // Key 2 — ใส่ key เพิ่มได้เลย
+  "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",  // Key 2 — ใส่ key เพิ่มได้เลย
   "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",  // Key 3
 ];
 
