@@ -18,7 +18,7 @@ const GROQ_API_KEYS = [
   "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", // Key 1
   "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", // Key 2
   "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", // Key 3
-  "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", // Key 4 (ลบ // ออกเพื่อเปิดใช้)
+  //"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", // Key 4 (ลบ // ออกเพื่อเปิดใช้)
   // "gsk_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB", // Key 5
 ];
 
