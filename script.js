@@ -1,28 +1,24 @@
 const firebaseConfig = {
   apiKey: "AIzaSyDZvkVWeZKYcVAzMIxViwq2l7PVlSb6S3M",
   authDomain: "smart-waste-db.firebaseapp.com",
-  databaseURL: "https://smart-waste-db-default-rtdb.asia-southeast1.firebasedatabase.app", // 👉 เพิ่มบรรทัดนี้เข้าไปครับ
+  databaseURL: "https://smart-waste-db-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "smart-waste-db",
   storageBucket: "smart-waste-db.firebasestorage.app",
   messagingSenderId: "744812148870",
   appId: "1:744812148870:web:162d9d749d623970887907"
 };
 
-
 // ============================================================
-// 🔑 MULTI-KEY LOAD BALANCING — เพิ่ม Key ได้เรื่อยๆ ที่นี่
+// 🔑 MULTI-KEY LOAD BALANCING
 // ============================================================
 const GROQ_API_KEYS = [
-  "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",
-  "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",  // Key 2 — ใส่ key เพิ่มได้เลย
-  "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",
-  "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",   // Key 4
+  "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",
+  "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",
+  "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",
 ];
 
-// ตัวติดตาม Key ปัจจุบัน
 let _groqKeyIndex = 0;
 
-/** คืนค่า key ตัวถัดไปแบบวนลูป (Round-Robin) */
 function getNextGroqKey() {
   const key = GROQ_API_KEYS[_groqKeyIndex % GROQ_API_KEYS.length];
   _groqKeyIndex++;
@@ -32,16 +28,15 @@ function getNextGroqKey() {
 // ============================================================
 // ⏱️ COOLDOWN CONFIG
 // ============================================================
-const SCAN_COOLDOWN_MS = 8000;   // 8 วินาที cooldown ระหว่างการสแกน
-let lastScanTime = 0;            // timestamp ของการสแกนล่าสุด
-let isScanInProgress = false;    // ป้องกันการกด 2 ครั้งซ้อน
+const SCAN_COOLDOWN_MS = 8000;
+let lastScanTime = 0;
+let isScanInProgress = false;
 
 // ============================================================
 // 🖼️ IMAGE RESIZE CONFIG
 // ============================================================
-const IMG_MAX_PX   = 512;   // ลดจาก 600→512 (ลด Token ~30% แต่ AI ยังแม่น)
-const IMG_QUALITY  = 0.65;  // ลดจาก 0.7→0.65 (ลดขนาดไฟล์)
-
+const IMG_MAX_PX   = 512;
+const IMG_QUALITY  = 0.65;
 
 // --- INIT FIREBASE ---
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
@@ -55,11 +50,13 @@ let userId = "";
 let isRegisterMode = false;
 let tempProfilePic = "";
 
-// Camera Variables
+let deferredPrompt = null;
+let wasteDonutChart = null;
+let wasteBarChart = null;
+
 let webcam, isRunning = false, animationId;
 let useBackCamera = true; 
 
-// Text Data
 const textData = {
     en: {
         appName: "Smart Waste<br>Classifier",
@@ -86,15 +83,11 @@ const RANK_SYSTEM = [
     { name: "Eco Legend", minScore: 5000, class: "rank-legend" }     
 ];
 
-
 const ITEM_DB = [
-    // --- XP BOOSTERS (Consumable) ---
     { id: "xp01", name: "Energy Drink", icon: "⚡", rarity: "Common", desc: "XP x1.5 (10 Mins)", type: "xp_boost", duration: 10, val: 1.5 },
     { id: "xp02", name: "Textbook", icon: "📚", rarity: "Rare", desc: "XP x2.0 (20 Mins)", type: "xp_boost", duration: 20, val: 2.0 },
     { id: "xp03", name: "Golden Brain", icon: "🧠", rarity: "Epic", desc: "XP x3.0 (30 Mins)", type: "xp_boost", duration: 30, val: 3.0 },
     { id: "xp04", name: "Alien Chip", icon: "👽", rarity: "Legendary", desc: "XP x5.0 (1 Hour)", type: "xp_boost", duration: 60, val: 5.0 },
-
-    // --- LUCK CHARMS (Now Consumable & Timed!) ---
     { id: "luk01", name: "Glass Eye", icon: "👁️", rarity: "Common", desc: "Drop Chance +5% (10 Mins)", type: "luck_boost", duration: 10, val: 5 },
     { id: "luk02", name: "Magnet", icon: "🧲", rarity: "Rare", desc: "Drop Chance +10% (20 Mins)", type: "luck_boost", duration: 20, val: 10 },
     { id: "luk03", name: "Lucky Cat", icon: "🐱", rarity: "Epic", desc: "Drop Chance +20% (30 Mins)", type: "luck_boost", duration: 30, val: 20 }
@@ -106,12 +99,10 @@ function rollItemDrop() {
     const baseChance = 12; 
     let luckBonus = 0;
 
-    // Check Active Luck Buff
     if (userData.activeLuckBuff) {
         if (Date.now() < userData.activeLuckBuff.expireAt) {
             luckBonus = userData.activeLuckBuff.val;
         } else {
-            // Expired
             db.ref('users/' + userId).update({ activeLuckBuff: null });
             userData.activeLuckBuff = null;
         }
@@ -141,7 +132,6 @@ function useItem(itemIdToUse) {
         const u = snapshot.val();
         let inv = u.inventory || [];
         
-        // Find FIRST instance of item to remove (backend logic)
         const index = inv.findIndex(i => i.id === itemIdToUse);
         if (index === -1) return;
 
@@ -153,7 +143,6 @@ function useItem(itemIdToUse) {
             : `ยืนยันใช้ "${dbItem.name}" หรือไม่?\n(มีผล ${dbItem.duration} นาที)`;
         
         if (confirm(confirmMsg)) {
-            // Remove 1 item from inventory
             inv.splice(index, 1);
             
             const expireTime = Date.now() + (dbItem.duration * 60 * 1000);
@@ -161,13 +150,8 @@ function useItem(itemIdToUse) {
             
             let updates = { inventory: inv };
 
-            // Apply Buff based on Type
-            if (dbItem.type === 'xp_boost') { 
-                updates.activeXpBuff = newBuff; 
-            } 
-            else if (dbItem.type === 'luck_boost') { 
-                updates.activeLuckBuff = newBuff; 
-            }
+            if (dbItem.type === 'xp_boost') { updates.activeXpBuff = newBuff; } 
+            else if (dbItem.type === 'luck_boost') { updates.activeLuckBuff = newBuff; }
 
             db.ref('users/' + userId).update(updates).then(() => {
                 userData.inventory = inv;
@@ -250,16 +234,13 @@ function openInventory() {
         grid.innerHTML = '';
         buffContainer.innerHTML = '';
 
-        // --- Active Buffs Display ---
         let buffsHtml = '';
         
-        // XP Buff
         if (userData.activeXpBuff && Date.now() < userData.activeXpBuff.expireAt) {
             const timeLeft = Math.ceil((userData.activeXpBuff.expireAt - Date.now()) / 60000);
             buffsHtml += `<div style="background:#fff3bf; border:1px solid #f08c00; color:#e67700; padding:8px; border-radius:8px; margin-bottom:5px; font-size:0.85rem;"><b>⚡ XP Boost x${userData.activeXpBuff.val}</b> (${timeLeft} mins left)</div>`;
         }
 
-        // Luck Buff
         if (userData.activeLuckBuff && Date.now() < userData.activeLuckBuff.expireAt) {
             const timeLeft = Math.ceil((userData.activeLuckBuff.expireAt - Date.now()) / 60000);
             buffsHtml += `<div style="background:#d3f9d8; border:1px solid #2b8a3e; color:#2b8a3e; padding:8px; border-radius:8px; margin-bottom:5px; font-size:0.85rem;"><b>🍀 Drop Rate +${userData.activeLuckBuff.val}%</b> (${timeLeft} mins left)</div>`;
@@ -272,8 +253,6 @@ function openInventory() {
             return;
         }
 
-        // --- ITEM STACKING LOGIC ---
-        // 1. Group items by ID
         const stackedItems = {};
         inv.forEach(item => {
             if (stackedItems[item.id]) {
@@ -283,7 +262,6 @@ function openInventory() {
             }
         });
 
-        // 2. Render Stacked Items
         Object.values(stackedItems).forEach((itemObj) => {
             const itemData = ITEM_DB.find(x => x.id === itemObj.id);
             if (!itemData) return;
@@ -291,7 +269,6 @@ function openInventory() {
             const div = document.createElement('div');
             div.className = `item-slot rarity-${itemData.rarity.toLowerCase()}`;
             
-            // Show Badge if count > 1
             const countBadge = itemObj.count > 1 ? `<div class="item-count">x${itemObj.count}</div>` : '';
 
             div.innerHTML = `
@@ -302,7 +279,6 @@ function openInventory() {
                 <div style="font-size:0.65rem; color:#666;">${itemData.desc}</div>
             `;
             
-            // On Click: Use 1 item from the stack
             div.onclick = () => useItem(itemData.id);
             grid.appendChild(div);
         });
@@ -311,10 +287,8 @@ function openInventory() {
 
 function closeInventory() { document.getElementById('inventory-modal').style.display = 'none'; }
 
-// 🆕 TUTORIAL FUNCTIONS
 function openTutorial() { document.getElementById('tutorial-modal').style.display = 'flex'; }
 function closeTutorial() { document.getElementById('tutorial-modal').style.display = 'none'; }
-
 
 function toggleAuthMode() {
     isRegisterMode = !isRegisterMode;
@@ -408,8 +382,11 @@ function handleAuthAction() {
 
 function loginSuccess(id, data) {
     userId = id; userData = data;
-    updateUI(false); 
+    updateUI(false);
     document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('bottom-nav').style.display = 'flex';
+    loadDailyQuests();
+    initIoTListener();
 }
 
 function logout() { location.reload(); }
@@ -516,7 +493,7 @@ async function startCamera() {
         if (webcam && webcam.canvas) { webcam.stop(); webcam = null; }
         container.innerHTML = ""; 
 
-        const size = IMG_MAX_PX;   // ใช้ค่าเดียวกับ resize config (512px)
+        const size = IMG_MAX_PX;
         const flip = !useBackCamera; 
         
         webcam = new tmImage.Webcam(size, size, flip);
@@ -573,19 +550,14 @@ async function loop() {
     if(isRunning && webcam) { webcam.update(); animationId = window.requestAnimationFrame(loop); }
 }
 
-// ============================================================
-// 🖼️ HELPER: ย่อภาพก่อนส่ง AI (ลด Token โดยไม่ทำให้ผลแย่ลง)
-// ============================================================
 function resizeCanvasForAI(srcCanvas) {
     const w = srcCanvas.width, h = srcCanvas.height;
     const maxPx = IMG_MAX_PX;
 
-    // ถ้าภาพเล็กอยู่แล้ว ส่งตรงๆ ได้เลย
     if (w <= maxPx && h <= maxPx) {
         return srcCanvas.toDataURL("image/jpeg", IMG_QUALITY);
     }
 
-    // คำนวณ scale ใหม่โดยรักษา aspect ratio
     const scale = maxPx / Math.max(w, h);
     const newW = Math.round(w * scale);
     const newH = Math.round(h * scale);
@@ -598,16 +570,10 @@ function resizeCanvasForAI(srcCanvas) {
     return offscreen.toDataURL("image/jpeg", IMG_QUALITY);
 }
 
-// ============================================================
-// 🤖 MAIN SCAN FUNCTION — Key Rotation + Cooldown + Resize
-// ============================================================
 async function captureAndAnalyzeWithGroq() {
     if (!webcam || !webcam.canvas) return;
-
-    // ─── Guard: ป้องกันกดซ้อน ───────────────────────────────
     if (isScanInProgress) return;
 
-    // ─── Guard: Cooldown ─────────────────────────────────────
     const now = Date.now();
     const elapsed = now - lastScanTime;
     if (elapsed < SCAN_COOLDOWN_MS) {
@@ -619,13 +585,11 @@ async function captureAndAnalyzeWithGroq() {
         return;
     }
 
-    // ─── Guard: ตรวจว่ามี Key ───────────────────────────────
     if (!GROQ_API_KEYS.length || GROQ_API_KEYS[0].includes("YOUR_GROQ")) {
         alert("Please set your GROQ_API_KEY in script.js first!");
         return;
     }
 
-    // ─── UI: เริ่มโหลด ───────────────────────────────────────
     isScanInProgress = true;
     lastScanTime = now;
     const btn = document.getElementById('btn-main');
@@ -634,10 +598,7 @@ async function captureAndAnalyzeWithGroq() {
     btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${textData[currentLang].analyzing}`;
     document.getElementById('scan-line').style.display = 'block';
 
-    // ─── ย่อภาพก่อนส่ง ──────────────────────────────────────
     const imageBase64 = resizeCanvasForAI(webcam.canvas);
-
-    // ─── เลือก Key แบบ Round-Robin ───────────────────────────
     const usedKey = getNextGroqKey();
     console.log(`[Scan] Using Key index ${(_groqKeyIndex - 1) % GROQ_API_KEYS.length + 1}/${GROQ_API_KEYS.length}`);
 
@@ -676,7 +637,6 @@ Return JSON ONLY with this exact structure, no markdown:
             })
         });
 
-        // ─── Handle Rate Limit (429) ── ลองตัด Key ถัดไป ─────
         if (response.status === 429) {
             const retryKey = getNextGroqKey();
             console.warn(`[Scan] 429 Rate Limit! Retrying with next key...`);
@@ -736,7 +696,6 @@ Return JSON ONLY: {"category":"...","name_en":"...","name_th":"...","desc_en":".
         btn.disabled = false;
         btn.innerHTML = originalText;
 
-        // ── แสดง Error ที่อ่านง่ายขึ้น ───────────────────────
         const isRateLimit = error.message && error.message.toLowerCase().includes("rate limit");
         const userMsg = isRateLimit
             ? (currentLang === 'en'
@@ -750,7 +709,6 @@ Return JSON ONLY: {"category":"...","name_en":"...","name_th":"...","desc_en":".
     }
 }
 
-/** แยก logic แสดงผลออกมาเพื่อ reuse ใน retry */
 function handleAIResult(resultData, btn, originalText) {
     document.getElementById('scan-line').style.display = 'none';
     btn.disabled = false;
@@ -777,6 +735,12 @@ function showResultPopupFromAI(aiData) {
 
     const category = wasteStandards[aiData.category] ? aiData.category : "General";
     const info = wasteStandards[category];
+
+    // 🆕 Feature integrations triggered on every successful scan
+    logScan(category);
+    sendIoTCommand(category);
+    sendUSBCommand(category); // 🆕 สั่งงานผ่าน USB ให้เปิดมอเตอร์และไฟ
+    updateQuestProgress(category);
 
     card.classList.remove('theme-yellow', 'theme-green', 'theme-red', 'theme-blue');
     card.classList.add(info.colorClass);
@@ -825,3 +789,492 @@ document.getElementById('username-input').addEventListener("keyup", function(eve
     if (event.key === "Enter") handleAuthAction();
 });
 
+function getTodayDateStr() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function setActiveNav(page) {
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    const el = document.getElementById('nav-' + page);
+    if (el) el.classList.add('active');
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const banner = document.getElementById('pwa-banner');
+    if (banner) banner.style.display = 'block';
+});
+window.addEventListener('appinstalled', () => { dismissPWA(); });
+
+function installPWA() {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => { deferredPrompt = null; dismissPWA(); });
+}
+function dismissPWA() {
+    const banner = document.getElementById('pwa-banner');
+    if (banner) banner.style.display = 'none';
+}
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('[SW] Registered:', reg.scope))
+            .catch(err => console.warn('[SW] Failed:', err));
+    });
+}
+
+function logScan(category) {
+    if (!userId) return;
+    const statsRef = db.ref('users/' + userId + '/scanStats');
+    statsRef.once('value').then(snap => {
+        const stats = snap.val() || { Recyclable: 0, Organic: 0, Hazardous: 0, General: 0, total: 0 };
+        stats[category] = (stats[category] || 0) + 1;
+        stats.total = (stats.total || 0) + 1;
+        statsRef.set(stats);
+    });
+}
+
+const CATEGORY_TO_BIN = { 'Recyclable': 'yellow', 'Organic': 'green', 'Hazardous': 'red', 'General': 'blue' };
+let iotAutoCloseTimer = null;
+
+function openIoTPanel() {
+    setActiveNav('iot');
+    document.getElementById('iot-modal').style.display = 'flex';
+}
+function closeIoTPanel() {
+    document.getElementById('iot-modal').style.display = 'none';
+    setActiveNav('home');
+}
+
+function initIoTListener() {
+    db.ref('iotBins').on('value', snapshot => {
+        updateIoTUI(snapshot.val() || {});
+    });
+}
+
+function updateIoTUI(binsData) {
+    ['yellow', 'green', 'red', 'blue'].forEach(color => {
+        const binData = binsData[color] || { open: false };
+        const card = document.getElementById('iot-' + color);
+        const badge = document.getElementById('iot-status-' + color);
+        if (!card || !badge) return;
+        if (binData.open) {
+            card.classList.add('iot-open');
+            badge.className = 'iot-status-badge iot-open-state';
+            badge.textContent = '● เปิดอยู่';
+        } else {
+            card.classList.remove('iot-open');
+            badge.className = 'iot-status-badge iot-closed';
+            badge.textContent = '● ปิด';
+        }
+    });
+}
+
+function sendIoTCommand(category) {
+    const binColor = CATEGORY_TO_BIN[category];
+    if (!binColor) return;
+    const updates = {};
+    ['yellow', 'green', 'red', 'blue'].forEach(color => {
+        updates['iotBins/' + color + '/open'] = (color === binColor);
+        updates['iotBins/' + color + '/lastUpdated'] = Date.now();
+    });
+    updates['iotBins/' + binColor + '/lastOpenedBy'] = userData.firstName || userId;
+    db.ref().update(updates);
+    if (iotAutoCloseTimer) clearTimeout(iotAutoCloseTimer);
+    iotAutoCloseTimer = setTimeout(() => {
+        db.ref('iotBins/' + binColor + '/open').set(false);
+    }, 10000);
+}
+
+function manualIoTToggle(color) {
+    const binRef = db.ref('iotBins/' + color);
+    binRef.once('value').then(snap => {
+        const current = snap.val() || {};
+        const newState = !current.open;
+        binRef.update({ open: newState, lastUpdated: Date.now(), lastOpenedBy: userData.firstName || userId });
+        if (newState) {
+            setTimeout(() => { db.ref('iotBins/' + color + '/open').set(false); }, 10000);
+        }
+    });
+}
+
+function openLeaderboard() {
+    setActiveNav('leaderboard');
+    document.getElementById('leaderboard-modal').style.display = 'flex';
+    document.getElementById('podium-container').innerHTML = '<div class="lb-loading"><div class="lb-spinner"></div></div>';
+    document.getElementById('rankings-list').innerHTML = '';
+
+    db.ref('users').orderByChild('score').limitToLast(20).once('value').then(snapshot => {
+        const users = [];
+        snapshot.forEach(child => {
+            const u = child.val();
+            users.push({
+                id: child.key,
+                name: ((u.firstName || '') + ' ' + (u.lastName || '')).trim() || u.username || 'Unknown',
+                score: u.score || 0,
+                profilePic: u.profilePic || ''
+            });
+        });
+        users.sort((a, b) => b.score - a.score);
+        renderLeaderboard(users);
+    });
+}
+function closeLeaderboard() {
+    document.getElementById('leaderboard-modal').style.display = 'none';
+    setActiveNav('home');
+}
+
+function renderLeaderboard(users) {
+    const podiumEl = document.getElementById('podium-container');
+    const listEl = document.getElementById('rankings-list');
+    if (!users.length) {
+        podiumEl.innerHTML = '<p style="color:#999;padding:20px;text-align:center;">ยังไม่มีข้อมูล</p>';
+        listEl.innerHTML = '';
+        return;
+    }
+    const emojis = ['👑', '🥈', '🥉'];
+    const top3 = users.slice(0, 3);
+    const order = [1, 0, 2].filter(i => top3[i]);
+    podiumEl.innerHTML = order.map(i => {
+        const u = top3[i];
+        const rank = i + 1;
+        const isMe = u.id === userId;
+        const av = u.profilePic || ('https://placehold.co/60x60/4361ee/fff?text=' + (u.name.charAt(0).toUpperCase() || '?'));
+        return `<div class="podium-item rank-${rank}">
+            <div class="podium-crown">${emojis[i]}</div>
+            <img class="podium-avatar" src="${av}" onerror="this.src='https://placehold.co/60x60/4361ee/fff?text=?'">
+            <div class="podium-name">${u.name}${isMe ? ' 👤' : ''}</div>
+            <div class="podium-score">${u.score} XP</div>
+            <div class="podium-base">${rank}</div>
+        </div>`;
+    }).join('');
+
+    listEl.innerHTML = users.slice(3).map((u, idx) => {
+        const rank = idx + 4;
+        const isMe = u.id === userId;
+        const rObj = getRank(u.score);
+        const av = u.profilePic || ('https://placehold.co/40x40/4361ee/fff?text=' + (u.name.charAt(0).toUpperCase() || '?'));
+        return `<div class="rank-row ${isMe ? 'is-me' : ''}">
+            <div class="rank-num">#${rank}</div>
+            <img class="rank-avatar" src="${av}" onerror="this.src='https://placehold.co/40x40/4361ee/fff?text=?'">
+            <div class="rank-info">
+                <div class="rank-uname">${u.name}${isMe ? ' 👤' : ''}</div>
+                <span class="rank-badge ${rObj.class}">${rObj.name}</span>
+            </div>
+            <div class="rank-xp">${u.score} XP</div>
+        </div>`;
+    }).join('');
+}
+
+const QUEST_POOL = [
+    { id: 'q1', icon: '📦', titleTH: 'นักสแกนมือใหม่', titleEN: 'First Steps', descTH: 'สแกนขยะ 5 ชิ้น', descEN: 'Scan 5 waste items', type: 'scan_total', target: 5, reward: { xp: 50 } },
+    { id: 'q2', icon: '☣️', titleTH: 'นักจัดการของอันตราย', titleEN: 'Hazard Handler', descTH: 'สแกนขยะอันตราย 2 ชิ้น', descEN: 'Scan 2 hazardous items', type: 'scan_hazardous', target: 2, reward: { xp: 30, item: 'xp01' } },
+    { id: 'q3', icon: '♻️', titleTH: 'นักรีไซเคิล', titleEN: 'Recycler Pro', descTH: 'สแกนขยะรีไซเคิล 3 ชิ้น', descEN: 'Scan 3 recyclable items', type: 'scan_recyclable', target: 3, reward: { xp: 25, item: 'luk01' } },
+    { id: 'q4', icon: '🌿', titleTH: 'นักรักษ์โลก', titleEN: 'Earth Lover', descTH: 'สแกนขยะอินทรีย์ 3 ชิ้น', descEN: 'Scan 3 organic items', type: 'scan_organic', target: 3, reward: { xp: 25 } },
+    { id: 'q5', icon: '🌟', titleTH: 'ผู้เชี่ยวชาญขยะ', titleEN: 'Waste Expert', descTH: 'สแกนขยะครบทุกประเภท', descEN: 'Scan all 4 waste types', type: 'scan_all_types', target: 4, reward: { xp: 100, item: 'xp02' } },
+    { id: 'q6', icon: '🔍', titleTH: 'นักสแกนอาชีพ', titleEN: 'Pro Scanner', descTH: 'สแกนขยะ 10 ชิ้น', descEN: 'Scan 10 waste items', type: 'scan_total', target: 10, reward: { xp: 100 } },
+    { id: 'q7', icon: '🗑️', titleTH: 'นักคัดแยก', titleEN: 'General Sorter', descTH: 'สแกนขยะทั่วไป 5 ชิ้น', descEN: 'Scan 5 general waste', type: 'scan_general', target: 5, reward: { xp: 20 } },
+    { id: 'q8', icon: '⚡', titleTH: 'นักสะสมพลังงาน', titleEN: 'Energy Collector', descTH: 'สแกนขยะ 3 ชิ้น', descEN: 'Scan any 3 waste items', type: 'scan_total', target: 3, reward: { xp: 40, item: 'xp01' } },
+];
+
+function getDailyQuests() {
+    const seed = parseInt(getTodayDateStr().replace(/-/g, ''));
+    const indices = new Set();
+    let s = seed;
+    while (indices.size < 3) {
+        s = (Math.imul(s, 1664525) + 1013904223) | 0;
+        indices.add(Math.abs(s) % QUEST_POOL.length);
+    }
+    return [...indices].map(i => QUEST_POOL[i]);
+}
+
+function openQuests() {
+    setActiveNav('quests');
+    document.getElementById('quests-modal').style.display = 'flex';
+    loadDailyQuests(true);
+}
+function closeQuests() {
+    document.getElementById('quests-modal').style.display = 'none';
+    setActiveNav('home');
+}
+
+function loadDailyQuests(forceRender) {
+    if (!userId) return;
+    const today = getTodayDateStr();
+    const dailyQuests = getDailyQuests();
+    db.ref('users/' + userId + '/questProgress/' + today).once('value').then(snap => {
+        const progress = snap.val() || {};
+        checkQuestBadge(progress, dailyQuests);
+        if (forceRender || document.getElementById('quests-modal').style.display === 'flex') {
+            renderQuests(dailyQuests, progress);
+        }
+    });
+}
+
+function renderQuests(dailyQuests, progress) {
+    const list = document.getElementById('quests-list');
+    if (!list) return;
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const msLeft = midnight - now;
+    const h = Math.floor(msLeft / 3600000);
+    const m = Math.floor((msLeft % 3600000) / 60000);
+    const resetEl = document.getElementById('quests-reset-time');
+    if (resetEl) resetEl.textContent = 'รีเซ็ตใน ' + h + ' ชม. ' + m + ' นาที';
+
+    list.innerHTML = dailyQuests.map((quest, idx) => {
+        const qp = progress[idx] || { progress: 0, claimed: false };
+        const prog = Math.min(qp.progress || 0, quest.target);
+        const pct = Math.min(Math.round((prog / quest.target) * 100), 100);
+        const done = prog >= quest.target;
+        const claimed = qp.claimed;
+        const rewardItem = quest.reward.item ? ITEM_DB.find(x => x.id === quest.reward.item) : null;
+        const rewardTxt = '+' + quest.reward.xp + ' XP' + (rewardItem ? ' + ' + rewardItem.icon : '');
+        let statusHtml = '';
+        if (claimed) {
+            statusHtml = '<div class="quest-claimed-badge"><i class="bi bi-check-circle-fill"></i> รับรางวัลแล้ว</div>';
+        } else if (done) {
+            statusHtml = '<button class="quest-claim-btn" onclick="claimQuestReward(' + idx + ')">🎁 รับรางวัล ' + rewardTxt + '</button>';
+        }
+        return '<div class="quest-item ' + (claimed ? 'claimed' : done ? 'completed' : '') + '">' +
+            '<div class="quest-top">' +
+            '<div class="quest-icon">' + quest.icon + '</div>' +
+            '<div class="quest-info">' +
+            '<div class="quest-title">' + (currentLang === 'th' ? quest.titleTH : quest.titleEN) + '</div>' +
+            '<div class="quest-desc">' + (currentLang === 'th' ? quest.descTH : quest.descEN) + '</div>' +
+            '</div>' +
+            '<div class="quest-reward">' + rewardTxt + '</div>' +
+            '</div>' +
+            '<div class="quest-progress-bar"><div class="quest-progress-fill" style="width:' + pct + '%;"></div></div>' +
+            '<div class="quest-progress-text"><span>' + prog + ' / ' + quest.target + '</span><span>' + pct + '%</span></div>' +
+            statusHtml +
+            '</div>';
+    }).join('');
+}
+
+function updateQuestProgress(category) {
+    if (!userId) return;
+    const today = getTodayDateStr();
+    const dailyQuests = getDailyQuests();
+    const questRef = db.ref('users/' + userId + '/questProgress/' + today);
+    questRef.once('value').then(snap => {
+        const progress = snap.val() || {};
+        dailyQuests.forEach((quest, idx) => {
+            const qp = progress[idx] || { progress: 0, claimed: false };
+            if (qp.claimed) return;
+            const prev = qp.progress || 0;
+            let updated = false;
+            let typesArr = qp.typesScanned || [];
+            switch (quest.type) {
+                case 'scan_total': qp.progress = prev + 1; updated = true; break;
+                case 'scan_recyclable': if (category === 'Recyclable') { qp.progress = prev + 1; updated = true; } break;
+                case 'scan_organic': if (category === 'Organic') { qp.progress = prev + 1; updated = true; } break;
+                case 'scan_hazardous': if (category === 'Hazardous') { qp.progress = prev + 1; updated = true; } break;
+                case 'scan_general': if (category === 'General') { qp.progress = prev + 1; updated = true; } break;
+                case 'scan_all_types':
+                    if (!typesArr.includes(category)) {
+                        typesArr.push(category);
+                        qp.typesScanned = typesArr;
+                        qp.progress = typesArr.length;
+                        updated = true;
+                    }
+                    break;
+            }
+            if (updated) {
+                progress[idx] = qp;
+                if ((qp.progress || 0) >= quest.target && prev < quest.target) {
+                    showQuestToast(currentLang === 'th' ? quest.titleTH : quest.titleEN);
+                }
+            }
+        });
+        questRef.set(progress).then(() => checkQuestBadge(progress, dailyQuests));
+    });
+}
+
+function claimQuestReward(questIdx) {
+    if (!userId) return;
+    const today = getTodayDateStr();
+    const quest = getDailyQuests()[questIdx];
+    const entryRef = db.ref('users/' + userId + '/questProgress/' + today + '/' + questIdx);
+    entryRef.once('value').then(snap => {
+        const qp = snap.val() || {};
+        if (qp.claimed || (qp.progress || 0) < quest.target) return;
+        entryRef.update({ claimed: true });
+        userData.score = (userData.score || 0) + quest.reward.xp;
+        const finish = (extraInv) => {
+            const upd = { score: userData.score };
+            if (extraInv) upd.inventory = extraInv;
+            db.ref('users/' + userId).update(upd);
+            updateUI(true);
+            loadDailyQuests(true);
+            alert('🎉 รับรางวัลแล้ว! +' + quest.reward.xp + ' XP' + (quest.reward.item ? ' + ไอเทม!' : ''));
+        };
+        if (quest.reward.item) {
+            const itemData = ITEM_DB.find(x => x.id === quest.reward.item);
+            if (itemData) {
+                db.ref('users/' + userId + '/inventory').once('value').then(invSnap => {
+                    let inv = invSnap.val() || [];
+                    if (!Array.isArray(inv)) inv = [];
+                    inv.push(itemData);
+                    userData.inventory = inv;
+                    finish(inv);
+                });
+                return;
+            }
+        }
+        finish();
+    });
+}
+
+function checkQuestBadge(progress, dailyQuests) {
+    let count = 0;
+    dailyQuests.forEach((quest, idx) => {
+        const qp = progress[idx] || {};
+        if ((qp.progress || 0) >= quest.target && !qp.claimed) count++;
+    });
+    const badge = document.getElementById('quest-nav-badge');
+    if (!badge) return;
+    badge.style.display = count > 0 ? 'flex' : 'none';
+    badge.textContent = count > 0 ? count : '';
+}
+
+function showQuestToast(title) {
+    const toast = document.getElementById('quest-toast');
+    const sub = document.getElementById('quest-toast-name');
+    if (!toast || !sub) return;
+    sub.textContent = title;
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, 4000);
+}
+
+function openAdminDashboard() {
+    setActiveNav('admin');
+    document.getElementById('admin-modal').style.display = 'flex';
+    document.getElementById('admin-stats-grid').innerHTML = '<div class="lb-loading"><div class="lb-spinner"></div></div>';
+    document.getElementById('admin-top-users').innerHTML = '';
+    loadAdminData();
+}
+function closeAdminDashboard() {
+    document.getElementById('admin-modal').style.display = 'none';
+    setActiveNav('home');
+}
+
+function loadAdminData() {
+    db.ref('users').once('value').then(snapshot => {
+        const users = [];
+        let totR = 0, totO = 0, totH = 0, totG = 0, totAll = 0;
+        snapshot.forEach(child => {
+            const u = child.val();
+            const s = u.scanStats || {};
+            const r = s.Recyclable || 0, o = s.Organic || 0, h = s.Hazardous || 0, g = s.General || 0;
+            const t = s.total || (r + o + h + g);
+            totR += r; totO += o; totH += h; totG += g; totAll += t;
+            users.push({ name: ((u.firstName || '') + ' ' + (u.lastName || '')).trim() || u.username || 'Unknown', profilePic: u.profilePic || '', scans: t });
+        });
+        users.sort((a, b) => b.scans - a.scans);
+        renderAdminDashboard({ totR, totO, totH, totG, totAll, users });
+    });
+}
+
+function renderAdminDashboard(d) {
+    const types = [
+        { label: '♻️ Recyclable', val: d.totR },
+        { label: '🌿 Organic', val: d.totO },
+        { label: '☣️ Hazardous', val: d.totH },
+        { label: '🗑️ General', val: d.totG }
+    ];
+    const most = types.reduce((a, b) => b.val > a.val ? b : a, types[0]);
+
+    document.getElementById('admin-stats-grid').innerHTML =
+        '<div class="admin-stat-card" style="--c1:#4361ee;--c2:#3a0ca3;"><div class="admin-stat-icon">🔍</div><div class="admin-stat-num">' + d.totAll + '</div><div class="admin-stat-label">สแกนทั้งหมด</div></div>' +
+        '<div class="admin-stat-card" style="--c1:#06d6a0;--c2:#0a9e76;"><div class="admin-stat-icon">♻️</div><div class="admin-stat-num">' + d.totR + '</div><div class="admin-stat-label">รีไซเคิล</div></div>' +
+        '<div class="admin-stat-card" style="--c1:#ef476f;--c2:#b5173a;"><div class="admin-stat-icon">☣️</div><div class="admin-stat-num">' + d.totH + '</div><div class="admin-stat-label">อันตราย</div></div>' +
+        '<div class="admin-stat-card" style="--c1:#f08c00;--c2:#d97706;"><div class="admin-stat-icon">🏆</div><div class="admin-stat-num" style="font-size:1.1rem;">' + (most ? most.label : '-') + '</div><div class="admin-stat-label">พบมากที่สุด</div></div>';
+
+    if (wasteDonutChart) wasteDonutChart.destroy();
+    const dCtx = document.getElementById('waste-donut-chart');
+    if (dCtx) {
+        wasteDonutChart = new Chart(dCtx.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Recyclable ♻️', 'Organic 🌿', 'Hazardous ☣️', 'General 🗑️'],
+                datasets: [{ data: [d.totR, d.totO, d.totH, d.totG], backgroundColor: ['#ffc107', '#06d6a0', '#ef476f', '#4361ee'], borderWidth: 3, borderColor: '#fff' }]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { padding: 12, font: { size: 11 } } } }, cutout: '60%', animation: { animateScale: true } }
+        });
+    }
+
+    if (wasteBarChart) wasteBarChart.destroy();
+    const bCtx = document.getElementById('waste-bar-chart');
+    if (bCtx) {
+        wasteBarChart = new Chart(bCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Recyclable', 'Organic', 'Hazardous', 'General'],
+                datasets: [{ label: 'สแกน', data: [d.totR, d.totO, d.totH, d.totG], backgroundColor: ['rgba(255,193,7,0.8)', 'rgba(6,214,160,0.8)', 'rgba(239,71,111,0.8)', 'rgba(67,97,238,0.8)'], borderColor: ['#f08c00', '#06d6a0', '#ef476f', '#4361ee'], borderWidth: 2, borderRadius: 8, borderSkipped: false }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } }, grid: { color: '#f1f3f5' } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } }, animation: { duration: 800 } }
+        });
+    }
+
+    const topDiv = document.getElementById('admin-top-users');
+    if (topDiv) {
+        topDiv.innerHTML = d.users.slice(0, 5).map((u, i) => {
+            const av = u.profilePic || ('https://placehold.co/40x40/4361ee/fff?text=' + (u.name.charAt(0).toUpperCase() || 'U'));
+            return '<div class="admin-user-row">' +
+                '<div class="admin-user-rank">' + (i + 1) + '</div>' +
+                '<img class="admin-user-avatar" src="' + av + '" onerror="this.src=\'https://placehold.co/40x40/4361ee/fff?text=U\'">' +
+                '<div class="admin-user-name">' + u.name + '</div>' +
+                '<div class="admin-user-scans">' + u.scans + ' scans</div>' +
+                '</div>';
+        }).join('') || '<p style="text-align:center;color:#999;">ยังไม่มีข้อมูล</p>';
+    }
+}
+
+// ============================================================
+// 🔌 WEB SERIAL API (MICRO:BIT USB CONNECTION)
+// ============================================================
+let serialPort = null;
+let serialWriter = null;
+
+async function connectSerial() {
+    try {
+        serialPort = await navigator.serial.requestPort();
+        await serialPort.open({ baudRate: 115200 }); 
+        
+        const textEncoder = new TextEncoderStream();
+        const writableStreamClosed = textEncoder.readable.pipeTo(serialPort.writable);
+        serialWriter = textEncoder.writable.getWriter();
+        
+        document.getElementById('usb-status-text').innerText = "✅ USB Connected";
+        document.getElementById('usb-status-text').style.color = "#2b8a3e";
+        alert(currentLang === 'en' ? "Micro:bit Connected Successfully!" : "เชื่อมต่อถังขยะผ่าน USB สำเร็จ!");
+        console.log("Web Serial Connected");
+    } catch (error) {
+        console.error("Serial connection failed:", error);
+        alert(currentLang === 'en' ? "Connection failed. Please select the Micro:bit port." : "การเชื่อมต่อล้มเหลว กรุณาเลือกพอร์ต Micro:bit");
+    }
+}
+
+async function sendUSBCommand(category) {
+    if (!serialWriter) return;
+    
+    const CATEGORY_TO_COLOR = { 
+        'Recyclable': 'YELLOW', 
+        'Organic': 'GREEN', 
+        'Hazardous': 'RED', 
+        'General': 'BLUE' 
+    };
+    
+    const color = CATEGORY_TO_COLOR[category] || 'BLUE';
+    const command = "OPEN:" + color + "\n";
+    
+    try {
+        await serialWriter.write(command);
+        console.log("Sent USB Command:", command);
+    } catch (e) {
+        console.error("Error writing to serial", e);
+    }
+}

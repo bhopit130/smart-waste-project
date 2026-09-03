@@ -4,14 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#4361ee">
+    <!-- PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="WasteAI">
+    <meta name="description" content="ระบบจำแนกขยะอัจฉริยะด้วย AI สำหรับโรงเรียนและชุมชน">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="Logo.png">
     <title>Smart Waste Classifier</title>
-    
+
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+    <!-- ✅ PWA Install Banner -->
+    <div class="pwa-banner" id="pwa-banner">
+        <div class="pwa-banner-inner">
+            <img src="Logo.png" class="pwa-logo" onerror="this.src='https://placehold.co/40x40/4361ee/fff?text=W'">
+            <div class="pwa-text">
+                <div class="pwa-title">ติดตั้งแอปพลิเคชัน</div>
+                <div class="pwa-sub">เพิ่มลงหน้าจอหลักได้เลย!</div>
+            </div>
+            <div class="pwa-actions">
+                <button class="pwa-btn-install" onclick="installPWA()">ติดตั้ง</button>
+                <button class="pwa-btn-dismiss" onclick="dismissPWA()"><i class="bi bi-x-lg"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
     <div class="login-overlay animated-bg" id="login-screen">
         <button class="lang-float-btn" onclick="toggleLanguage()" id="login-lang-btn">EN</button>
         <div class="login-box glass-effect">
@@ -21,7 +45,7 @@
             <h1 class="app-title-login">Smart Waste<br>Classifier</h1>
             <h2 id="auth-title">Welcome Back</h2>
             <p id="auth-subtitle">Sign in to continue</p>
-            
+
             <div id="reg-pic-container" style="display:none; margin-bottom:15px;">
                 <div class="profile-upload-circle" onclick="document.getElementById('reg-file-input').click()">
                     <img id="reg-preview" src="https://placehold.co/100x100/eee/999?text=Upload">
@@ -38,7 +62,7 @@
 
             <input type="text" id="username-input" class="modern-input" placeholder="Username">
             <input type="password" id="password-input" class="modern-input" placeholder="Password">
-            
+
             <button class="btn-gradient" onclick="handleAuthAction()" id="btn-auth">LOGIN</button>
             <p id="auth-error" class="error-text"></p>
 
@@ -48,8 +72,9 @@
         </div>
     </div>
 
+    <!-- Main App Container -->
     <div class="app-container">
-        
+
         <header class="top-header">
             <div class="brand">
                 <div class="logo-circle">
@@ -60,13 +85,12 @@
                     <span class="badge-live">● Online System</span>
                 </div>
             </div>
-            
             <div style="display:flex; gap:10px;">
                 <div class="profile-pill" onclick="openProfileSettings()">
                     <img src="https://placehold.co/100x100/eee/999?text=U" id="topbar-img">
                     <div class="xp-info">
                         <span id="display-name">Guest</span>
-                        <span class="rank-badge" id="user-rank">Beginner</span> 
+                        <span class="rank-badge" id="user-rank">Beginner</span>
                     </div>
                 </div>
             </div>
@@ -90,7 +114,6 @@
 
             <div class="controls-area">
                 <div class="tools-row" style="justify-content: space-between;">
-                    
                     <div class="tools-group-left" style="display:flex; gap:10px;">
                         <button class="icon-btn" onclick="openTutorial()" style="background:#e3fafc; color:#228be6;">
                             <i class="bi bi-question-lg"></i>
@@ -99,7 +122,6 @@
                             <i class="bi bi-backpack-fill"></i>
                         </button>
                     </div>
-
                     <div class="tools-group-right" style="display:flex; gap:10px;">
                         <button class="icon-btn" onclick="toggleLanguage()" id="btn-lang">EN</button>
                         <button class="icon-btn active" onclick="toggleSound()" id="btn-sound"><i class="bi bi-volume-up-fill"></i></button>
@@ -108,15 +130,41 @@
                             <i class="bi bi-x-lg"></i>
                         </button>
                     </div>
-
                 </div>
-                
+
                 <button class="btn-main-action" onclick="handleMainButton()" id="btn-main">
                     <i class="bi bi-camera-fill"></i> <span id="txt-btn-start">START CAMERA</span>
                 </button>
             </div>
         </main>
+
+        <!-- ✅ Bottom Navigation -->
+        <nav class="bottom-nav" id="bottom-nav" style="display:none;">
+            <button class="nav-item active" id="nav-home" onclick="setActiveNav('home')">
+                <i class="bi bi-house-fill"></i>
+                <span>หน้าหลัก</span>
+            </button>
+            <button class="nav-item" id="nav-leaderboard" onclick="openLeaderboard()">
+                <i class="bi bi-trophy-fill"></i>
+                <span>อันดับ</span>
+            </button>
+            <button class="nav-item" id="nav-quests" onclick="openQuests()">
+                <i class="bi bi-lightning-charge-fill"></i>
+                <span>ภารกิจ</span>
+                <span class="quest-nav-badge" id="quest-nav-badge" style="display:none;"></span>
+            </button>
+            <button class="nav-item" id="nav-iot" onclick="openIoTPanel()">
+                <i class="bi bi-cpu-fill"></i>
+                <span>Smart Bin</span>
+            </button>
+            <button class="nav-item" id="nav-admin" onclick="openAdminDashboard()">
+                <i class="bi bi-bar-chart-fill"></i>
+                <span>สถิติ</span>
+            </button>
+        </nav>
     </div>
+
+    <!-- ====== EXISTING MODALS ====== -->
 
     <div class="modal-overlay" id="result-modal">
         <div class="modal-card" id="modal-card-content">
@@ -144,24 +192,21 @@
                 <h3 style="margin:0;"><i class="bi bi-book-half"></i> Game Guide</h3>
                 <button onclick="closeTutorial()" style="background:none;border:none;font-size:1.5rem;">&times;</button>
             </div>
-            
             <div class="tutorial-section">
-                <h4>🗑️ Waste Types & XP</h4>
+                <h4>🗑️ Waste Types &amp; XP</h4>
                 <div class="tut-row"><span class="badge-dot" style="background:var(--warning);"></span> <b>Yellow Bin (Recycle)</b>: +10 XP</div>
                 <div class="tut-row"><span class="badge-dot" style="background:var(--success);"></span> <b>Green Bin (Organic)</b>: +5 XP</div>
                 <div class="tut-row"><span class="badge-dot" style="background:var(--danger);"></span> <b>Red Bin (Hazardous)</b>: +15 XP</div>
                 <div class="tut-row"><span class="badge-dot" style="background:var(--primary);"></span> <b>Blue Bin (General)</b>: +2 XP</div>
             </div>
-
             <div class="tutorial-section">
-                <h4>🎒 Items & Rarity</h4>
+                <h4>🎒 Items &amp; Rarity</h4>
                 <p style="font-size:0.85rem; color:#666;">Scan waste to find hidden items! (12% Drop Rate)</p>
                 <div class="tut-row"><span class="rarity-badge common">Common</span> Easy (70%)</div>
                 <div class="tut-row"><span class="rarity-badge rare">Rare</span> Uncommon (25%)</div>
                 <div class="tut-row"><span class="rarity-badge epic">Epic</span> Hard (4.5%)</div>
                 <div class="tut-row"><span class="rarity-badge legendary">Legendary</span> Extreme (0.5%)</div>
             </div>
-
             <div class="tutorial-section">
                 <h4>⚡ Item Usage (Consumables)</h4>
                 <ul style="font-size:0.85rem; color:#444; padding-left:20px;">
@@ -170,7 +215,10 @@
                     <li><i>Note: All items are time-limited. Activate them wisely!</i></li>
                 </ul>
             </div>
-            
+            <div class="tutorial-section">
+                <h4>🎯 Daily Quests</h4>
+                <p style="font-size:0.85rem; color:#666;">Complete daily missions for bonus XP and special items! Quests reset every midnight.</p>
+            </div>
             <button class="btn-gradient" onclick="closeTutorial()">Got it!</button>
         </div>
     </div>
@@ -202,9 +250,7 @@
                 <h3 style="margin:0;"><i class="bi bi-backpack-fill"></i> My Bag</h3>
                 <button onclick="closeInventory()" style="background:none;border:none;font-size:1.5rem;">&times;</button>
             </div>
-            
             <div id="active-buff-container" style="margin-bottom:15px;"></div>
-            
             <div id="inventory-grid" class="inventory-grid">
                 <p style="color:#999; width:100%; text-align:center;">Empty bag...</p>
             </div>
@@ -225,6 +271,148 @@
             <input type="password" id="edit-password" class="modern-input" placeholder="New Password">
             <button class="btn-gradient" onclick="saveProfileChanges()">Save Changes</button>
             <button class="btn-danger-outline" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <!-- ====== 🆕 NEW MODALS ====== -->
+
+    <!-- Quest Toast Notification -->
+    <div class="quest-toast" id="quest-toast" style="display:none;">
+        <div class="quest-toast-inner">
+            <span style="font-size:1.8rem;">🎯</span>
+            <div>
+                <div class="quest-toast-title">ภารกิจสำเร็จ! Quest Complete!</div>
+                <div class="quest-toast-sub" id="quest-toast-name">-</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🏆 Global Leaderboard -->
+    <div class="modal-overlay" id="leaderboard-modal" style="align-items: flex-end;">
+        <div class="modal-card leaderboard-card">
+            <div class="lb-header">
+                <div>
+                    <h3 style="margin:0; color:white; display:flex; align-items:center; gap:8px;">
+                        <i class="bi bi-trophy-fill" style="color:#FFD700;"></i> Global Leaderboard
+                    </h3>
+                    <p style="margin:0; font-size:0.8rem; color:rgba(255,255,255,0.75);">กระดานอันดับผู้นำ · Realtime</p>
+                </div>
+                <button onclick="closeLeaderboard()" style="background:none;border:none;font-size:1.5rem;color:white;cursor:pointer;">×</button>
+            </div>
+            <div class="podium-container" id="podium-container">
+                <div class="lb-loading"><div class="lb-spinner"></div></div>
+            </div>
+            <div class="rankings-list" id="rankings-list"></div>
+        </div>
+    </div>
+
+    <!-- ⚡ Daily Quests -->
+    <div class="modal-overlay" id="quests-modal" style="align-items: flex-end;">
+        <div class="modal-card quests-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                <div>
+                    <h3 style="margin:0;">⚡ Daily Quests</h3>
+                    <p style="margin:0; font-size:0.8rem; color:#888;" id="quests-reset-time">รีเซ็ตทุกเที่ยงคืน</p>
+                </div>
+                <button onclick="closeQuests()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;">×</button>
+            </div>
+            <div id="quests-list" style="margin-top:15px;">
+                <div class="lb-loading"><div class="lb-spinner"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📊 Admin Analytics Dashboard -->
+    <div class="modal-overlay" id="admin-modal" style="align-items: flex-end;">
+        <div class="modal-card admin-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <div>
+                    <h3 style="margin:0; display:flex; align-items:center; gap:8px;">
+                        <i class="bi bi-bar-chart-fill" style="color:#4361ee;"></i> Analytics Dashboard
+                    </h3>
+                    <p style="margin:0; font-size:0.8rem; color:#888;">สถิติการใช้งานระบบทั้งหมด</p>
+                </div>
+                <button onclick="closeAdminDashboard()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;">×</button>
+            </div>
+            <div class="admin-stats-grid" id="admin-stats-grid">
+                <div class="lb-loading"><div class="lb-spinner"></div></div>
+            </div>
+            <div class="admin-chart-wrap">
+                <h4 class="admin-section-title"><i class="bi bi-pie-chart-fill"></i> สัดส่วนขยะแต่ละประเภท</h4>
+                <div style="max-width:280px; margin:0 auto;">
+                    <canvas id="waste-donut-chart"></canvas>
+                </div>
+            </div>
+            <div class="admin-top-users-wrap">
+                <h4 class="admin-section-title"><i class="bi bi-people-fill"></i> Top Scanners</h4>
+                <div id="admin-top-users"></div>
+            </div>
+            <div class="admin-chart-wrap">
+                <h4 class="admin-section-title"><i class="bi bi-bar-chart"></i> จำนวนสแกนแต่ละประเภท</h4>
+                <canvas id="waste-bar-chart" height="180"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🤖 IoT Smart Bin Panel -->
+    <div class="modal-overlay" id="iot-modal" style="align-items: flex-end;">
+        <div class="modal-card iot-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <div>
+                    <h3 style="margin:0; display:flex; align-items:center; gap:8px;">
+                        <i class="bi bi-cpu-fill" style="color:#4361ee;"></i> Smart Bin IoT
+                    </h3>
+                    <p style="margin:0; font-size:0.8rem; color:#888;">ควบคุมถังขยะอัจฉริยะแบบเรียลไทม์</p>
+                </div>
+                <button onclick="closeIoTPanel()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;">×</button>
+            </div>
+            <div class="iot-bins-grid">
+                <div class="iot-bin-card" id="iot-yellow">
+                    <div class="iot-bin-icon" style="background:#fff3bf;border-color:#f08c00;">♻️</div>
+                    <div class="iot-bin-name">ถังเหลือง</div>
+                    <div class="iot-bin-type">Recyclable</div>
+                    <div class="iot-status-badge iot-closed" id="iot-status-yellow">● ปิด</div>
+                    <button class="iot-toggle-btn" onclick="manualIoTToggle('yellow')">Manual Toggle</button>
+                </div>
+                <div class="iot-bin-card" id="iot-green">
+                    <div class="iot-bin-icon" style="background:#d3f9d8;border-color:#2b8a3e;">🌿</div>
+                    <div class="iot-bin-name">ถังเขียว</div>
+                    <div class="iot-bin-type">Organic</div>
+                    <div class="iot-status-badge iot-closed" id="iot-status-green">● ปิด</div>
+                    <button class="iot-toggle-btn" onclick="manualIoTToggle('green')">Manual Toggle</button>
+                </div>
+                <div class="iot-bin-card" id="iot-red">
+                    <div class="iot-bin-icon" style="background:#ffe3e3;border-color:#e03131;">⚠️</div>
+                    <div class="iot-bin-name">ถังแดง</div>
+                    <div class="iot-bin-type">Hazardous</div>
+                    <div class="iot-status-badge iot-closed" id="iot-status-red">● ปิด</div>
+                    <button class="iot-toggle-btn" onclick="manualIoTToggle('red')">Manual Toggle</button>
+                </div>
+                <div class="iot-bin-card" id="iot-blue">
+                    <div class="iot-bin-icon" style="background:#d0ebff;border-color:#1971c2;">🗑️</div>
+                    <div class="iot-bin-name">ถังน้ำเงิน</div>
+                    <div class="iot-bin-type">General</div>
+                    <div class="iot-status-badge iot-closed" id="iot-status-blue">● ปิด</div>
+                    <button class="iot-toggle-btn" onclick="manualIoTToggle('blue')">Manual Toggle</button>
+                </div>
+            </div>
+            
+            <!-- 🆕 กล่องเชื่อมต่อ USB -->
+            <div class="iot-guide-box" style="margin-bottom: 15px; background: #fff3bf; border-color: #f08c00;">
+                <div class="iot-guide-title" style="color: #f08c00;"><i class="bi bi-usb-plug-fill"></i> การเชื่อมต่อผ่านสาย USB (ถังขยะต้นแบบ)</div>
+                <p class="iot-guide-desc">กดปุ่มเชื่อมต่อเพื่อสั่งงาน Micro:bit ผ่านสาย USB</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                    <span id="usb-status-text" style="font-size:0.8rem; font-weight:bold; color:#e03131;">❌ ยังไม่ได้เชื่อมต่อ</span>
+                    <button class="btn-gradient" onclick="connectSerial()" style="width:auto; padding:5px 15px; font-size:0.8rem; margin:0;">เชื่อมต่อ USB</button>
+                </div>
+            </div>
+
+            <div class="iot-guide-box">
+                <div class="iot-guide-title"><i class="bi bi-info-circle-fill"></i> วิธีเชื่อมต่อฮาร์ดแวร์</div>
+                <p class="iot-guide-desc">เมื่อ AI วิเคราะห์ผล ระบบส่งคำสั่งไปยัง Firebase อัตโนมัติ<br>ESP32 / KidBright อ่านค่าจาก path:</p>
+                <div class="iot-code-block">📡 iotBins/{color}/open → true/false</div>
+                <p class="iot-guide-desc" style="margin-top:8px;margin-bottom:0;">ถังปิดอัตโนมัติหลัง <b>10 วินาที</b> · กด Toggle เพื่อควบคุมด้วยตนเอง</p>
+            </div>
         </div>
     </div>
 

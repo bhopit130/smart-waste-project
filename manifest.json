@@ -1,0 +1,17 @@
+{
+  "name": "Smart Waste Classifier",
+  "short_name": "WasteAI",
+  "description": "ระบบจำแนกขยะอัจฉริยะด้วย AI สำหรับโรงเรียนและชุมชน",
+  "theme_color": "#4361ee",
+  "background_color": "#f0f2f5",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "scope": "./",
+  "start_url": "./index.html",
+  "lang": "th",
+  "icons": [
+    { "src": "Logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "Logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["education", "utilities"]
+}
