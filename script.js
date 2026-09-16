@@ -12,9 +12,9 @@ const firebaseConfig = {
 // 🔑 MULTI-KEY LOAD BALANCING
 // ============================================================
 const GROQ_API_KEYS = [
-  "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",
-  "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",
-  "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",
+    "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",
+    "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",
+    "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",
 ];
 
 let _groqKeyIndex = 0;
@@ -1490,4 +1490,4 @@ async function sendManualUSBCommand(color) {
     } catch (e) {
         appendSerialLog('❌ Write error: ' + e.message, 'err');
     }
-}
+}
