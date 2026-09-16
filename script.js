@@ -882,10 +882,13 @@ function sendIoTCommand(category) {
     });
     updates['iotBins/' + binColor + '/lastOpenedBy'] = userData.firstName || userId;
     db.ref().update(updates);
+    // Auto-close synced with Micro:bit firmware (4s) + small buffer
+    // If USB connected, Micro:bit sends STATUS:CLOSED which cancels this timer
     if (iotAutoCloseTimer) clearTimeout(iotAutoCloseTimer);
     iotAutoCloseTimer = setTimeout(() => {
         db.ref('iotBins/' + binColor + '/open').set(false);
-    }, 10000);
+        iotAutoCloseTimer = null;
+    }, 4500);
 }
 
 function manualIoTToggle(color) {
@@ -895,7 +898,8 @@ function manualIoTToggle(color) {
         const newState = !current.open;
         binRef.update({ open: newState, lastUpdated: Date.now(), lastOpenedBy: userData.firstName || userId });
         if (newState) {
-            setTimeout(() => { db.ref('iotBins/' + color + '/open').set(false); }, 10000);
+            sendManualUSBCommand(color); // also send to Micro:bit if connected
+            setTimeout(() => { db.ref('iotBins/' + color + '/open').set(false); }, 4500);
         }
     });
 }
@@ -1236,45 +1240,254 @@ function renderAdminDashboard(d) {
 // ============================================================
 // 🔌 WEB SERIAL API (MICRO:BIT USB CONNECTION)
 // ============================================================
-let serialPort = null;
-let serialWriter = null;
+let serialPort       = null;
+let serialWriter     = null;
+let serialReader     = null;
+let serialReadActive = false;
+let _usbToastTimer   = null;
+let _serialLogCount  = 0;
+const MAX_LOG_LINES  = 80;
 
+// ---- Helper: get current timestamp string ----
+function getTimestamp() {
+    const d = new Date();
+    return [d.getHours(), d.getMinutes(), d.getSeconds()]
+        .map(n => String(n).padStart(2, '0'))
+        .join(':');
+}
+
+// ---- Helper: append line to Serial Log console ----
+function appendSerialLog(text, type = 'sys') {
+    const console = document.getElementById('serial-log-console');
+    if (!console) return;
+
+    // Remove idle placeholder
+    const idle = console.querySelector('.serial-log-idle');
+    if (idle) idle.remove();
+
+    // Limit log lines
+    _serialLogCount++;
+    if (_serialLogCount > MAX_LOG_LINES) {
+        if (console.firstChild) console.removeChild(console.firstChild);
+    }
+
+    const line = document.createElement('div');
+    line.className = 'log-' + type;
+    line.textContent = `[${getTimestamp()}] ${text}`;
+    console.appendChild(line);
+    console.scrollTop = console.scrollHeight;
+}
+
+// ---- Helper: clear Serial Log ----
+function clearSerialLog() {
+    const console = document.getElementById('serial-log-console');
+    if (!console) return;
+    console.innerHTML = '<span class="serial-log-idle">— Serial Log ล้างแล้ว —</span>';
+    _serialLogCount = 0;
+}
+
+// ---- Helper: update Serial Status Bar UI ----
+function setSerialConnectedUI(connected) {
+    const bar   = document.getElementById('serial-status-bar');
+    const dot   = document.getElementById('serial-dot');
+    const label = document.getElementById('serial-status-label');
+    const btnC  = document.getElementById('btn-serial-connect');
+    const btnD  = document.getElementById('btn-serial-disconnect');
+
+    if (!bar) return;
+
+    if (connected) {
+        bar.classList.add('connected');
+        dot.classList.add('connected');
+        label.classList.add('connected');
+        label.textContent = '✅ Micro:bit เชื่อมต่อแล้ว';
+        if (btnC) btnC.style.display = 'none';
+        if (btnD) btnD.style.display = 'flex';
+    } else {
+        bar.classList.remove('connected');
+        dot.classList.remove('connected');
+        label.classList.remove('connected');
+        label.textContent = 'ยังไม่ได้เชื่อมต่อ';
+        if (btnC) btnC.style.display = 'flex';
+        if (btnD) btnD.style.display = 'none';
+    }
+}
+
+// ---- Helper: show USB Command Toast ----
+function showUSBToast(command) {
+    if (_usbToastTimer) { clearTimeout(_usbToastTimer); }
+    let existing = document.querySelector('.usb-toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'usb-toast';
+    toast.innerHTML = `<div class="usb-toast-inner"><span class="usb-toast-icon">🔌</span> → ${command}</div>`;
+    document.body.appendChild(toast);
+
+    _usbToastTimer = setTimeout(() => { toast.remove(); }, 2500);
+}
+
+// ---- Connect to Micro:bit via Web Serial ----
 async function connectSerial() {
+    if (!('serial' in navigator)) {
+        alert('❌ เบราว์เซอร์ของคุณไม่รองรับ Web Serial API\nกรุณาใช้ Google Chrome หรือ Microsoft Edge เวอร์ชันล่าสุด');
+        return;
+    }
+
     try {
         serialPort = await navigator.serial.requestPort();
-        await serialPort.open({ baudRate: 115200 }); 
-        
+        await serialPort.open({ baudRate: 115200 });
+
+        // Setup Writer
         const textEncoder = new TextEncoderStream();
-        const writableStreamClosed = textEncoder.readable.pipeTo(serialPort.writable);
+        textEncoder.readable.pipeTo(serialPort.writable);
         serialWriter = textEncoder.writable.getWriter();
-        
-        document.getElementById('usb-status-text').innerText = "✅ USB Connected";
-        document.getElementById('usb-status-text').style.color = "#2b8a3e";
-        alert(currentLang === 'en' ? "Micro:bit Connected Successfully!" : "เชื่อมต่อถังขยะผ่าน USB สำเร็จ!");
-        console.log("Web Serial Connected");
+
+        // Setup Reader (read Micro:bit feedback)
+        const textDecoder = new TextDecoderStream();
+        serialPort.readable.pipeTo(textDecoder.writable);
+        serialReader = textDecoder.readable.getReader();
+
+        setSerialConnectedUI(true);
+        appendSerialLog('🟢 Connected to Micro:bit @ 115200 baud', 'sys');
+
+        // Listen for incoming data from Micro:bit
+        startSerialRead();
+
+        console.log('[Web Serial] Connected');
     } catch (error) {
-        console.error("Serial connection failed:", error);
-        alert(currentLang === 'en' ? "Connection failed. Please select the Micro:bit port." : "การเชื่อมต่อล้มเหลว กรุณาเลือกพอร์ต Micro:bit");
+        console.error('[Web Serial] Connection failed:', error);
+        if (error.name !== 'NotFoundError') {
+            const msg = currentLang === 'en'
+                ? 'Connection failed. Please select the Micro:bit port.'
+                : 'การเชื่อมต่อล้มเหลว กรุณาเลือกพอร์ต Micro:bit';
+            alert(msg);
+            appendSerialLog('❌ Connection failed: ' + error.message, 'err');
+        }
     }
 }
 
-async function sendUSBCommand(category) {
-    if (!serialWriter) return;
-    
-    const CATEGORY_TO_COLOR = { 
-        'Recyclable': 'YELLOW', 
-        'Organic': 'GREEN', 
-        'Hazardous': 'RED', 
-        'General': 'BLUE' 
-    };
-    
-    const color = CATEGORY_TO_COLOR[category] || 'BLUE';
-    const command = "OPEN:" + color + "\n";
-    
+// ---- Disconnect from Micro:bit ----
+async function disconnectSerial() {
+    serialReadActive = false;
+
     try {
-        await serialWriter.write(command);
-        console.log("Sent USB Command:", command);
+        if (serialReader) { await serialReader.cancel(); serialReader = null; }
+        if (serialWriter) { await serialWriter.close(); serialWriter = null; }
+        if (serialPort)   { await serialPort.close();   serialPort   = null; }
     } catch (e) {
-        console.error("Error writing to serial", e);
+        console.warn('[Web Serial] Disconnect error:', e);
+    }
+
+    setSerialConnectedUI(false);
+    appendSerialLog('🔴 Disconnected', 'sys');
+    console.log('[Web Serial] Disconnected');
+}
+
+// ---- Read loop: receive data from Micro:bit ----
+async function startSerialRead() {
+    serialReadActive = true;
+    let rxBuffer = '';
+
+    try {
+        while (serialReadActive && serialReader) {
+            const { value, done } = await serialReader.read();
+            if (done) break;
+            if (!value) continue;
+
+            rxBuffer += value;
+            const lines = rxBuffer.split('\n');
+            rxBuffer = lines.pop(); // keep incomplete line in buffer
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                handleSerialIncoming(trimmed);
+            }
+        }
+    } catch (e) {
+        if (serialReadActive) {
+            appendSerialLog('❌ Read error: ' + e.message, 'err');
+            console.error('[Web Serial] Read error:', e);
+        }
     }
 }
+
+// ---- Handle messages received FROM Micro:bit ----
+function handleSerialIncoming(msg) {
+    appendSerialLog('← ' + msg, 'rx');
+    console.log('[Micro:bit RX]:', msg);
+
+    // STATUS:COLOR:OPENED or STATUS:COLOR:CLOSED
+    if (msg.startsWith('STATUS:')) {
+        const parts = msg.split(':');
+        if (parts.length === 3) {
+            const color  = parts[1].toLowerCase();
+            const state  = parts[2];
+            const isOpen = state === 'OPENED';
+
+            // Sync Firebase with actual hardware state
+            if (['yellow', 'green', 'red', 'blue'].includes(color)) {
+                db.ref('iotBins/' + color + '/open').set(isOpen);
+                if (!isOpen) {
+                    // Micro:bit confirmed close — cancel any pending timer
+                    if (iotAutoCloseTimer) {
+                        clearTimeout(iotAutoCloseTimer);
+                        iotAutoCloseTimer = null;
+                    }
+                }
+            }
+        }
+    }
+
+    if (msg === 'PONG') {
+        appendSerialLog('← PONG (heartbeat OK)', 'rx');
+    }
+
+    if (msg === 'READY') {
+        appendSerialLog('🤖 Micro:bit is READY!', 'sys');
+    }
+}
+
+// ---- Send command TO Micro:bit ----
+async function sendUSBCommand(category) {
+    if (!serialWriter) return;
+
+    const CATEGORY_TO_COLOR = {
+        'Recyclable': 'YELLOW',
+        'Organic':    'GREEN',
+        'Hazardous':  'RED',
+        'General':    'BLUE'
+    };
+
+    const color   = CATEGORY_TO_COLOR[category] || 'BLUE';
+    const command = 'OPEN:' + color + '\n';
+
+    try {
+        await serialWriter.write(command);
+        appendSerialLog('→ ' + command.trim(), 'tx');
+        showUSBToast('OPEN:' + color);
+        console.log('[Web Serial TX]:', command.trim());
+    } catch (e) {
+        appendSerialLog('❌ Write error: ' + e.message, 'err');
+        console.error('[Web Serial] Write error:', e);
+
+        // If port was disconnected unexpectedly, clean up
+        if (e.name === 'InvalidStateError') {
+            await disconnectSerial();
+        }
+    }
+}
+
+// ---- Send manual USB command from IoT panel ----
+async function sendManualUSBCommand(color) {
+    if (!serialWriter) return;
+    const command = 'OPEN:' + color.toUpperCase() + '\n';
+    try {
+        await serialWriter.write(command);
+        appendSerialLog('→ ' + command.trim() + ' (manual)', 'tx');
+        showUSBToast('OPEN:' + color.toUpperCase());
+    } catch (e) {
+        appendSerialLog('❌ Write error: ' + e.message, 'err');
+    }
+}

@@ -357,7 +357,7 @@
     <!-- 🤖 IoT Smart Bin Panel -->
     <div class="modal-overlay" id="iot-modal" style="align-items: flex-end;">
         <div class="modal-card iot-card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <div>
                     <h3 style="margin:0; display:flex; align-items:center; gap:8px;">
                         <i class="bi bi-cpu-fill" style="color:#4361ee;"></i> Smart Bin IoT
@@ -366,55 +366,87 @@
                 </div>
                 <button onclick="closeIoTPanel()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;">×</button>
             </div>
+
+            <!-- 🔌 USB Connection Status Bar -->
+            <div class="serial-status-bar" id="serial-status-bar">
+                <div class="serial-status-dot" id="serial-dot"></div>
+                <span class="serial-status-label" id="serial-status-label">ยังไม่ได้เชื่อมต่อ</span>
+                <div style="margin-left:auto; display:flex; gap:8px;">
+                    <button class="serial-connect-btn" id="btn-serial-connect" onclick="connectSerial()">
+                        <i class="bi bi-usb-plug-fill"></i> เชื่อมต่อ
+                    </button>
+                    <button class="serial-disconnect-btn" id="btn-serial-disconnect" onclick="disconnectSerial()" style="display:none;">
+                        <i class="bi bi-x-circle-fill"></i> ตัดเชื่อมต่อ
+                    </button>
+                </div>
+            </div>
+
+            <!-- 🗑️ Bin Cards Grid -->
             <div class="iot-bins-grid">
                 <div class="iot-bin-card" id="iot-yellow">
                     <div class="iot-bin-icon" style="background:#fff3bf;border-color:#f08c00;">♻️</div>
                     <div class="iot-bin-name">ถังเหลือง</div>
                     <div class="iot-bin-type">Recyclable</div>
                     <div class="iot-status-badge iot-closed" id="iot-status-yellow">● ปิด</div>
-                    <button class="iot-toggle-btn" onclick="manualIoTToggle('yellow')">Manual Toggle</button>
+                    <div class="iot-fill-bar-wrap">
+                        <div class="iot-fill-bar" id="iot-fill-yellow" style="width:0%; background:#f08c00;"></div>
+                    </div>
+                    <button class="iot-toggle-btn" onclick="manualIoTToggle('yellow')">Manual Open</button>
                 </div>
                 <div class="iot-bin-card" id="iot-green">
                     <div class="iot-bin-icon" style="background:#d3f9d8;border-color:#2b8a3e;">🌿</div>
                     <div class="iot-bin-name">ถังเขียว</div>
                     <div class="iot-bin-type">Organic</div>
                     <div class="iot-status-badge iot-closed" id="iot-status-green">● ปิด</div>
-                    <button class="iot-toggle-btn" onclick="manualIoTToggle('green')">Manual Toggle</button>
+                    <div class="iot-fill-bar-wrap">
+                        <div class="iot-fill-bar" id="iot-fill-green" style="width:0%; background:#2b8a3e;"></div>
+                    </div>
+                    <button class="iot-toggle-btn" onclick="manualIoTToggle('green')">Manual Open</button>
                 </div>
                 <div class="iot-bin-card" id="iot-red">
                     <div class="iot-bin-icon" style="background:#ffe3e3;border-color:#e03131;">⚠️</div>
                     <div class="iot-bin-name">ถังแดง</div>
                     <div class="iot-bin-type">Hazardous</div>
                     <div class="iot-status-badge iot-closed" id="iot-status-red">● ปิด</div>
-                    <button class="iot-toggle-btn" onclick="manualIoTToggle('red')">Manual Toggle</button>
+                    <div class="iot-fill-bar-wrap">
+                        <div class="iot-fill-bar" id="iot-fill-red" style="width:0%; background:#e03131;"></div>
+                    </div>
+                    <button class="iot-toggle-btn" onclick="manualIoTToggle('red')">Manual Open</button>
                 </div>
                 <div class="iot-bin-card" id="iot-blue">
                     <div class="iot-bin-icon" style="background:#d0ebff;border-color:#1971c2;">🗑️</div>
                     <div class="iot-bin-name">ถังน้ำเงิน</div>
                     <div class="iot-bin-type">General</div>
                     <div class="iot-status-badge iot-closed" id="iot-status-blue">● ปิด</div>
-                    <button class="iot-toggle-btn" onclick="manualIoTToggle('blue')">Manual Toggle</button>
-                </div>
-            </div>
-            
-            <!-- 🆕 กล่องเชื่อมต่อ USB -->
-            <div class="iot-guide-box" style="margin-bottom: 15px; background: #fff3bf; border-color: #f08c00;">
-                <div class="iot-guide-title" style="color: #f08c00;"><i class="bi bi-usb-plug-fill"></i> การเชื่อมต่อผ่านสาย USB (ถังขยะต้นแบบ)</div>
-                <p class="iot-guide-desc">กดปุ่มเชื่อมต่อเพื่อสั่งงาน Micro:bit ผ่านสาย USB</p>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-                    <span id="usb-status-text" style="font-size:0.8rem; font-weight:bold; color:#e03131;">❌ ยังไม่ได้เชื่อมต่อ</span>
-                    <button class="btn-gradient" onclick="connectSerial()" style="width:auto; padding:5px 15px; font-size:0.8rem; margin:0;">เชื่อมต่อ USB</button>
+                    <div class="iot-fill-bar-wrap">
+                        <div class="iot-fill-bar" id="iot-fill-blue" style="width:0%; background:#1971c2;"></div>
+                    </div>
+                    <button class="iot-toggle-btn" onclick="manualIoTToggle('blue')">Manual Open</button>
                 </div>
             </div>
 
-            <div class="iot-guide-box">
+            <!-- 📟 Serial Log Console -->
+            <div class="serial-log-wrap" id="serial-log-wrap">
+                <div class="serial-log-header">
+                    <span><i class="bi bi-terminal-fill"></i> Serial Log</span>
+                    <button onclick="clearSerialLog()" class="serial-log-clear">ล้าง</button>
+                </div>
+                <div class="serial-log-console" id="serial-log-console">
+                    <span class="serial-log-idle">— รอการเชื่อมต่อ —</span>
+                </div>
+            </div>
+
+            <!-- ℹ️ Info Guide -->
+            <div class="iot-guide-box" style="margin-top:12px;">
                 <div class="iot-guide-title"><i class="bi bi-info-circle-fill"></i> วิธีเชื่อมต่อฮาร์ดแวร์</div>
-                <p class="iot-guide-desc">เมื่อ AI วิเคราะห์ผล ระบบส่งคำสั่งไปยัง Firebase อัตโนมัติ<br>ESP32 / KidBright อ่านค่าจาก path:</p>
+                <p class="iot-guide-desc">เมื่อ AI วิเคราะห์ผล ระบบส่งคำสั่งไปยัง Firebase และ Micro:bit อัตโนมัติ<br>
+                ESPs / KidBright อ่านค่าจาก Firebase path:</p>
                 <div class="iot-code-block">📡 iotBins/{color}/open → true/false</div>
-                <p class="iot-guide-desc" style="margin-top:8px;margin-bottom:0;">ถังปิดอัตโนมัติหลัง <b>10 วินาที</b> · กด Toggle เพื่อควบคุมด้วยตนเอง</p>
+                <p class="iot-guide-desc" style="margin-top:8px;margin-bottom:0;">ถังปิดอัตโนมัติหลัง <b>4 วินาที</b> · ดู <b>microbit_setup.md</b> สำหรับวิธีต่อวงจร</p>
             </div>
         </div>
     </div>
+
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
