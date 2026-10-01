@@ -1,14 +1,11 @@
-const CACHE_NAME = 'smart-waste-v2.0';
+const CACHE_NAME = 'smart-waste-v3.0'; // เปลี่ยนเวอร์ชันเพื่อบังคับอัปเดต
 const STATIC_ASSETS = [
     './', './index.html', './style.css', './script.js', './Logo.png', './manifest.json',
 ];
 
 self.addEventListener('install', event => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then(cache =>
-            cache.addAll(STATIC_ASSETS).catch(err => console.warn('[SW] Cache warn:', err))
-        ).then(() => self.skipWaiting())
-    );
+    // บังคับให้ Service Worker ตัวใหม่ทำงานทันที ไม่ต้องรอ
+    self.skipWaiting(); 
 });
 
 self.addEventListener('activate', event => {
@@ -21,7 +18,8 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
-    // Always network-first for Firebase, Groq API, CDN
+    
+    // พวก API ปล่อยผ่านไปเน็ตตลอด
     if (url.hostname.includes('firebase') || url.hostname.includes('groq') ||
         url.hostname.includes('gstatic') || url.hostname.includes('googleapis') ||
         url.hostname.includes('jsdelivr') || url.hostname.includes('flaticon') ||
@@ -29,17 +27,17 @@ self.addEventListener('fetch', event => {
         event.respondWith(fetch(event.request).catch(() => new Response('', { status: 503 })));
         return;
     }
-    // Cache-first for local assets
+    
+    // NETWORK FIRST STRATEGY (ดึงจากเน็ตก่อน ถ้าพัง/ออฟไลน์ ค่อยดึงแคช)
     event.respondWith(
-        caches.match(event.request).then(cached => {
-            if (cached) return cached;
-            return fetch(event.request).then(res => {
-                if (res.ok && event.request.method === 'GET') {
-                    const clone = res.clone();
-                    caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
-                }
-                return res;
-            }).catch(() => new Response('Offline', { status: 503 }));
+        fetch(event.request).then(res => {
+            if (res.ok && event.request.method === 'GET') {
+                const clone = res.clone();
+                caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+            }
+            return res;
+        }).catch(() => {
+            return caches.match(event.request);
         })
     );
 });
