@@ -46,6 +46,24 @@ const db = firebase.database();
 // --- VARIABLES ---
 let currentLang = 'en';
 let isSoundOn = true;
+// ตัวแปรควบคุมโหมดเปิดถังขยะอัตโนมัติ (ค่าเริ่มต้น = เปิดทำงาน)
+let isAutoOpenEnabled = true;
+
+// ฟังก์ชันสลับโหมดเมื่อกดปุ่ม
+function toggleAutoOpen() {
+    isAutoOpenEnabled = !isAutoOpenEnabled;
+    const btn = document.getElementById('btn-auto-bin');
+    
+    if (isAutoOpenEnabled) {
+        btn.style.backgroundColor = "#06d6a0"; // สีเขียว = เปิดโหมด
+        btn.style.color = "white";
+        alert(currentLang === 'en' ? "Auto-Open Bin: ON" : "✅ เปิดโหมด: สแกนแล้วเปิดถังอัตโนมัติ");
+    } else {
+        btn.style.backgroundColor = "#e9ecef"; // สีเทา = ปิดโหมด (สแกนอย่างเดียว)
+        btn.style.color = "#adb5bd";
+        alert(currentLang === 'en' ? "Auto-Open Bin: OFF" : "❌ เปิดโหมด: สแกนเก็บแต้มอย่างเดียว (ไม่เปิดถัง)");
+    }
+}
 let userData = { score: 0, firstName: "", lastName: "", username: "", password: "", profilePic: "", inventory: [], activeXpBuff: null, activeLuckBuff: null };
 let userId = "";
 let isRegisterMode = false;
@@ -737,10 +755,15 @@ function showResultPopupFromAI(aiData) {
     const category = wasteStandards[aiData.category] ? aiData.category : "General";
     const info = wasteStandards[category];
 
-    // 🆕 Feature integrations triggered on every successful scan
+   // 🆕 Feature integrations triggered on every successful scan
     logScan(category);
-    sendIoTCommand(category);
-    sendUSBCommand(category); // 🆕 สั่งงานผ่าน USB ให้เปิดมอเตอร์และไฟ
+    
+    // ตรวจสอบโหมดก่อนสั่งเปิดถัง
+    if (isAutoOpenEnabled) {
+        sendIoTCommand(category);
+        sendUSBCommand(category); // สั่งงานผ่าน USB ให้เปิดมอเตอร์และไฟ
+    }
+    
     updateQuestProgress(category);
 
     card.classList.remove('theme-yellow', 'theme-green', 'theme-red', 'theme-blue');
