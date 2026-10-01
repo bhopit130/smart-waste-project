@@ -12,9 +12,9 @@ const firebaseConfig = {
 // 🔑 MULTI-KEY LOAD BALANCING
 // ============================================================
 const GROQ_API_KEYS = [
-    "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",
-    "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",
-    "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",
+    "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",
+    "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",
+    "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",
 ];
 
 let _groqKeyIndex = 0;
