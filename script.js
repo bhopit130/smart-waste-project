@@ -882,27 +882,31 @@ function sendIoTCommand(category) {
         updates['iotBins/' + color + '/lastUpdated'] = Date.now();
     });
     updates['iotBins/' + binColor + '/lastOpenedBy'] = userData.firstName || userId;
-    db.ref().update(updates);
-    // Auto-close synced with Micro:bit firmware (4s) + small buffer
-    // If USB connected, Micro:bit sends STATUS:CLOSED which cancels this timer
+    
+    // อัปเดตขึ้น Firebase (ถ้าโดนบล็อกเพราะไม่ได้ล็อกอิน ให้ข้ามไป ไม่ต้องโวยวาย)
+    db.ref().update(updates).catch(err => console.warn("Firebase Update Skipped (Guest)"));
+
     if (iotAutoCloseTimer) clearTimeout(iotAutoCloseTimer);
     iotAutoCloseTimer = setTimeout(() => {
-        db.ref('iotBins/' + binColor + '/open').set(false);
+        db.ref('iotBins/' + binColor + '/open').set(false).catch(e => {});
         iotAutoCloseTimer = null;
     }, 4500);
 }
-
 function manualIoTToggle(color) {
+    sendManualUSBCommand(color); 
+    
     const binRef = db.ref('iotBins/' + color);
     binRef.once('value').then(snap => {
         const current = snap.val() || {};
         const newState = !current.open;
-        binRef.update({ open: newState, lastUpdated: Date.now(), lastOpenedBy: userData.firstName || userId });
+        
+        binRef.update({ open: newState, lastUpdated: Date.now(), lastOpenedBy: userData.firstName || userId })
+              .catch(e => console.warn("Firebase Toggle Skipped (Guest)"));
+              
         if (newState) {
-            sendManualUSBCommand(color); // also send to Micro:bit if connected
-            setTimeout(() => { db.ref('iotBins/' + color + '/open').set(false); }, 4500);
+            setTimeout(() => { db.ref('iotBins/' + color + '/open').set(false).catch(e => {}); }, 4500);
         }
-    });
+    }).catch(e => console.warn("Firebase Read Skipped (Guest)"));
 }
 
 function openLeaderboard() {
