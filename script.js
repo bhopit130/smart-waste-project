@@ -1,17 +1,54 @@
+// ==========================================
+// 🛑 ระบบ POPUP แจ้งเตือนแบบใหม่ (แทน alert / confirm เดิม)
+// ==========================================
+function showCustomConfirm(title, message, icon = '❓') {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('custom-dialog-modal');
+        const btnOk = document.getElementById('btn-dialog-ok');
+        const btnCancel = document.getElementById('btn-dialog-cancel');
+
+        // ใส่ข้อความลงใน Popup
+        document.getElementById('dialog-title').innerText = title;
+        document.getElementById('dialog-message').innerText = message;
+        document.getElementById('dialog-icon').innerText = icon;
+
+        // ถ้าเป็นแค่การ "แจ้งเตือน" (Alert) แบบไม่ต้องกดยกเลิก ให้ซ่อนปุ่มยกเลิกทิ้งไป
+        if (title === "แจ้งเตือน" || title === "Error" || icon === '❌') {
+            btnCancel.style.display = "none";
+        } else {
+            btnCancel.style.display = "block";
+        }
+
+        // แสดง Popup ขึ้นมา
+        modal.style.display = 'flex';
+
+        // เมื่อกดปุ่ม "ตกลง"
+        btnOk.onclick = () => {
+            modal.style.display = 'none';
+            resolve(true); // ตอบกลับว่า "ตกลง" (true)
+        };
+
+        // เมื่อกดปุ่ม "ยกเลิก"
+        btnCancel.onclick = () => {
+            modal.style.display = 'none';
+            resolve(false); // ตอบกลับว่า "ยกเลิก" (false)
+        };
+    });
+}
 const firebaseConfig = {
-  apiKey: "AIzaSyDZvkVWeZKYcVAzMIxViwq2l7PVlSb6S3M",
-  authDomain: "smart-waste-db.firebaseapp.com",
-  databaseURL: "https://smart-waste-db-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "smart-waste-db",
-  storageBucket: "smart-waste-db.firebasestorage.app",
-  messagingSenderId: "744812148870",
-  appId: "1:744812148870:web:162d9d749d623970887907"
+    apiKey: "AIzaSyDZvkVWeZKYcVAzMIxViwq2l7PVlSb6S3M",
+    authDomain: "smart-waste-db.firebaseapp.com",
+    databaseURL: "https://smart-waste-db-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "smart-waste-db",
+    storageBucket: "smart-waste-db.firebasestorage.app",
+    messagingSenderId: "744812148870",
+    appId: "1:744812148870:web:162d9d749d623970887907"
 };
 
 // ============================================================
 // 🔑 MULTI-KEY LOAD BALANCING (Bypass Secret Scanner & Backup Key)
 // ============================================================
-const keyPartA1 = "gsk_dgpaGdQI2riepMbJMVZ"; 
+const keyPartA1 = "gsk_dgpaGdQI2riepMbJMVZ";
 const keyPartA2 = "qWGdyb3FYgY04FhPLa5IiL70LeKb3yuhN";
 
 const keyPartB1 = "gsk_eCUTrPd6fTrHhZmkd2oG";
@@ -25,9 +62,9 @@ const GROQ_API_KEYS = [
 let _groqKeyIndex = 0;
 
 function getNextGroqKey() {
-  const key = GROQ_API_KEYS[_groqKeyIndex % GROQ_API_KEYS.length];
-  _groqKeyIndex++;
-  return key;
+    const key = GROQ_API_KEYS[_groqKeyIndex % GROQ_API_KEYS.length];
+    _groqKeyIndex++;
+    return key;
 }
 
 // ============================================================
@@ -40,8 +77,8 @@ let isScanInProgress = false;
 // ============================================================
 // 🖼️ IMAGE RESIZE CONFIG
 // ============================================================
-const IMG_MAX_PX   = 512;
-const IMG_QUALITY  = 0.65;
+const IMG_MAX_PX = 512;
+const IMG_QUALITY = 0.65;
 
 // --- INIT FIREBASE ---
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
@@ -60,24 +97,24 @@ let wasteDonutChart = null;
 let wasteBarChart = null;
 
 let webcam, isRunning = false, animationId;
-let useBackCamera = true; 
+let useBackCamera = true;
 
 // ตัวแปรควบคุมโหมดเปิดถังขยะอัตโนมัติ (ค่าเริ่มต้น = เปิดทำงาน)
 let isAutoOpenEnabled = true;
 
 // ฟังก์ชันสลับโหมดเมื่อกดปุ่ม
-function toggleAutoOpen() {
+async function toggleAutoOpen() {
     isAutoOpenEnabled = !isAutoOpenEnabled;
     const btn = document.getElementById('btn-auto-bin');
-    
+
     if (isAutoOpenEnabled) {
         btn.style.backgroundColor = "#06d6a0"; // สีเขียว = เปิดโหมด
         btn.style.color = "white";
-        alert(currentLang === 'en' ? "Auto-Open Bin: ON" : "✅ เปิดโหมด: สแกนแล้วเปิดถังอัตโนมัติ");
+        await showCustomConfirm("แจ้งเตือน", currentLang === 'en' ? "Auto-Open Bin: ON" : "✅ เปิดโหมด: สแกนแล้วเปิดถังอัตโนมัติ", "🗑️");
     } else {
         btn.style.backgroundColor = "#e9ecef"; // สีเทา = ปิดโหมด (สแกนอย่างเดียว)
         btn.style.color = "#adb5bd";
-        alert(currentLang === 'en' ? "Auto-Open Bin: OFF" : "❌ เปิดโหมด: สแกนเก็บแต้มอย่างเดียว (ไม่เปิดถัง)");
+        await showCustomConfirm("แจ้งเตือน", currentLang === 'en' ? "Auto-Open Bin: OFF" : "❌ เปิดโหมด: สแกนเก็บแต้มอย่างเดียว (ไม่เปิดถัง)", "🗑️");
     }
 }
 
@@ -98,13 +135,13 @@ const textData = {
 
 const RANK_SYSTEM = [
     { name: "Novice", minScore: 0, class: "rank-novice" },
-    { name: "Eco Scout", minScore: 50, class: "rank-scout" },        
-    { name: "Green Ranger", minScore: 150, class: "rank-ranger" },   
-    { name: "Waste Hero", minScore: 300, class: "rank-hero" },       
-    { name: "Eco Warrior", minScore: 600, class: "rank-warrior" },   
+    { name: "Eco Scout", minScore: 50, class: "rank-scout" },
+    { name: "Green Ranger", minScore: 150, class: "rank-ranger" },
+    { name: "Waste Hero", minScore: 300, class: "rank-hero" },
+    { name: "Eco Warrior", minScore: 600, class: "rank-warrior" },
     { name: "Earth Guardian", minScore: 1000, class: "rank-guardian" },
     { name: "Waste Master", minScore: 2000, class: "rank-master" },
-    { name: "Eco Legend", minScore: 5000, class: "rank-legend" }     
+    { name: "Eco Legend", minScore: 5000, class: "rank-legend" }
 ];
 
 const ITEM_DB = [
@@ -120,7 +157,7 @@ const ITEM_DB = [
 let pendingItem = null;
 
 function rollItemDrop() {
-    const baseChance = 12; 
+    const baseChance = 12;
     let luckBonus = 0;
 
     if (userData.activeLuckBuff) {
@@ -135,11 +172,11 @@ function rollItemDrop() {
     const finalChance = baseChance + luckBonus;
     console.log(`Drop Rate: ${finalChance}% (Base: ${baseChance} + Bonus: ${luckBonus})`);
 
-    if (Math.random() * 100 > finalChance) return null; 
+    if (Math.random() * 100 > finalChance) return null;
 
     const rRoll = Math.random() * 100;
     let rarityPool = [];
-    
+
     if (rRoll < 70) rarityPool = ITEM_DB.filter(i => i.rarity === "Common");
     else if (rRoll < 95) rarityPool = ITEM_DB.filter(i => i.rarity === "Rare");
     else if (rRoll < 99.5) rarityPool = ITEM_DB.filter(i => i.rarity === "Epic");
@@ -149,44 +186,44 @@ function rollItemDrop() {
     return rarityPool[Math.floor(Math.random() * rarityPool.length)];
 }
 
-function useItem(itemIdToUse) {
-    if(!userId) return;
+async function useItem(itemIdToUse) {
+    if (!userId) return;
 
-    db.ref('users/' + userId).once('value').then(snapshot => {
-        const u = snapshot.val();
-        let inv = u.inventory || [];
-        
-        const index = inv.findIndex(i => i.id === itemIdToUse);
-        if (index === -1) return;
+    const snapshot = await db.ref('users/' + userId).once('value');
+    const u = snapshot.val();
+    let inv = u.inventory || [];
 
-        const dbItem = ITEM_DB.find(x => x.id === itemIdToUse);
-        if (!dbItem) return;
+    const index = inv.findIndex(i => i.id === itemIdToUse);
+    if (index === -1) return;
 
-        const confirmMsg = currentLang === 'en' 
-            ? `Activate ${dbItem.name}? (${dbItem.duration} mins)` 
-            : `ยืนยันใช้ "${dbItem.name}" หรือไม่?\n(มีผล ${dbItem.duration} นาที)`;
-        
-        if (confirm(confirmMsg)) {
-            inv.splice(index, 1);
-            
-            const expireTime = Date.now() + (dbItem.duration * 60 * 1000);
-            const newBuff = { itemId: dbItem.id, expireAt: expireTime, val: dbItem.val, name: dbItem.name };
-            
-            let updates = { inventory: inv };
+    const dbItem = ITEM_DB.find(x => x.id === itemIdToUse);
+    if (!dbItem) return;
 
-            if (dbItem.type === 'xp_boost') { updates.activeXpBuff = newBuff; } 
-            else if (dbItem.type === 'luck_boost') { updates.activeLuckBuff = newBuff; }
+    const confirmMsg = currentLang === 'en'
+        ? `Activate ${dbItem.name}? (${dbItem.duration} mins)`
+        : `ยืนยันใช้ "${dbItem.name}" หรือไม่?\n(มีผล ${dbItem.duration} นาที)`;
 
-            db.ref('users/' + userId).update(updates).then(() => {
-                userData.inventory = inv;
-                if(dbItem.type === 'xp_boost') userData.activeXpBuff = newBuff;
-                if(dbItem.type === 'luck_boost') userData.activeLuckBuff = newBuff;
-                
-                alert(currentLang === 'en' ? "Buff Activated!" : "เริ่มใช้งานไอเทมแล้ว! รีบสแกนเลย!");
-                openInventory(); 
-            });
-        }
-    });
+    const isConfirmed = await showCustomConfirm("เปิดใช้งานไอเทม", confirmMsg, dbItem.icon);
+
+    if (isConfirmed) {
+        inv.splice(index, 1);
+
+        const expireTime = Date.now() + (dbItem.duration * 60 * 1000);
+        const newBuff = { itemId: dbItem.id, expireAt: expireTime, val: dbItem.val, name: dbItem.name };
+
+        let updates = { inventory: inv };
+
+        if (dbItem.type === 'xp_boost') { updates.activeXpBuff = newBuff; }
+        else if (dbItem.type === 'luck_boost') { updates.activeLuckBuff = newBuff; }
+
+        await db.ref('users/' + userId).update(updates);
+        userData.inventory = inv;
+        if (dbItem.type === 'xp_boost') userData.activeXpBuff = newBuff;
+        if (dbItem.type === 'luck_boost') userData.activeLuckBuff = newBuff;
+
+        await showCustomConfirm("แจ้งเตือน", currentLang === 'en' ? "Buff Activated!" : "เริ่มใช้งานไอเทมแล้ว! รีบสแกนเลย!", "✨");
+        openInventory();
+    }
 }
 
 function calculateXPWithBuff(baseXP) {
@@ -210,16 +247,16 @@ function showItemDropModal(item) {
     document.getElementById('drop-animation').innerText = item.icon;
     document.getElementById('drop-name').innerText = item.name;
     document.getElementById('drop-desc').innerText = item.desc;
-    
+
     const rBadge = document.getElementById('drop-rarity');
     rBadge.innerText = item.rarity.toUpperCase();
     rBadge.className = "rank-badge";
     rBadge.classList.remove("rank-novice", "rank-scout", "rank-guardian", "rank-legend");
-    
-    if(item.rarity === "Common") rBadge.classList.add("rank-novice");
-    else if(item.rarity === "Rare") rBadge.classList.add("rank-scout");
-    else if(item.rarity === "Epic") rBadge.classList.add("rank-guardian");
-    else if(item.rarity === "Legendary") rBadge.classList.add("rank-legend");
+
+    if (item.rarity === "Common") rBadge.classList.add("rank-novice");
+    else if (item.rarity === "Rare") rBadge.classList.add("rank-scout");
+    else if (item.rarity === "Epic") rBadge.classList.add("rank-guardian");
+    else if (item.rarity === "Legendary") rBadge.classList.add("rank-legend");
 
     document.getElementById('item-drop-modal').style.display = 'flex';
 }
@@ -227,10 +264,10 @@ function showItemDropModal(item) {
 function closeItemDropModal() { document.getElementById('item-drop-modal').style.display = 'none'; }
 
 function saveItemToInventory(item) {
-    if(!userId) return;
+    if (!userId) return;
     db.ref('users/' + userId + '/inventory').once('value').then(snapshot => {
         let inv = snapshot.val() || [];
-        if(!Array.isArray(inv)) inv = [];
+        if (!Array.isArray(inv)) inv = [];
         inv.push(item);
         db.ref('users/' + userId).update({ inventory: inv });
     });
@@ -240,11 +277,11 @@ function openInventory() {
     const modal = document.getElementById('inventory-modal');
     const grid = document.getElementById('inventory-grid');
     const buffContainer = document.getElementById('active-buff-container');
-    
+
     grid.innerHTML = '<p>Loading...</p>';
     modal.style.display = 'flex';
 
-    if(!userId) {
+    if (!userId) {
         grid.innerHTML = '<p>Please Login first.</p>';
         return;
     }
@@ -259,7 +296,7 @@ function openInventory() {
         buffContainer.innerHTML = '';
 
         let buffsHtml = '';
-        
+
         if (userData.activeXpBuff && Date.now() < userData.activeXpBuff.expireAt) {
             const timeLeft = Math.ceil((userData.activeXpBuff.expireAt - Date.now()) / 60000);
             buffsHtml += `<div style="background:#fff3bf; border:1px solid #f08c00; color:#e67700; padding:8px; border-radius:8px; margin-bottom:5px; font-size:0.85rem;"><b>⚡ XP Boost x${userData.activeXpBuff.val}</b> (${timeLeft} mins left)</div>`;
@@ -272,7 +309,7 @@ function openInventory() {
 
         buffContainer.innerHTML = buffsHtml || `<div style="text-align:center; color:#999; font-size:0.8rem;">No active buffs</div>`;
 
-        if(inv.length === 0) {
+        if (inv.length === 0) {
             grid.innerHTML += '<p style="grid-column: 1/-1; text-align: center; color:#999;">Bag is empty. Scan waste to find items!</p>';
             return;
         }
@@ -292,7 +329,7 @@ function openInventory() {
 
             const div = document.createElement('div');
             div.className = `item-slot rarity-${itemData.rarity.toLowerCase()}`;
-            
+
             const countBadge = itemObj.count > 1 ? `<div class="item-count">x${itemObj.count}</div>` : '';
 
             div.innerHTML = `
@@ -302,7 +339,7 @@ function openInventory() {
                 <div class="item-name">${itemData.name}</div>
                 <div style="font-size:0.65rem; color:#666;">${itemData.desc}</div>
             `;
-            
+
             div.onclick = () => useItem(itemData.id);
             grid.appendChild(div);
         });
@@ -346,13 +383,13 @@ function updateAuthText() {
 function handleImageUpload(input, previewId) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             const img = new Image();
             img.src = e.target.result;
-            img.onload = function() {
+            img.onload = function () {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-                const maxSize = 200; 
+                const maxSize = 200;
                 let w = img.width, h = img.height;
                 if (w > h) { if (w > maxSize) { h *= maxSize / w; w = maxSize; } }
                 else { if (h > maxSize) { w *= maxSize / h; h = maxSize; } }
@@ -370,8 +407,8 @@ function handleAuthAction() {
     const userIn = document.getElementById('username-input').value.trim();
     const passIn = document.getElementById('password-input').value.trim();
     const errorDiv = document.getElementById('auth-error');
-    
-    if(!userIn || !passIn) return errorDiv.innerText = (currentLang === 'en') ? "Please fill all fields" : "กรุณากรอกข้อมูลให้ครบ";
+
+    if (!userIn || !passIn) return errorDiv.innerText = (currentLang === 'en') ? "Please fill all fields" : "กรุณากรอกข้อมูลให้ครบ";
 
     const safeId = userIn.replace(/[.#$/\[\]]/g, "_");
     const btn = document.getElementById('btn-auth');
@@ -385,10 +422,10 @@ function handleAuthAction() {
             } else {
                 const first = document.getElementById('reg-firstname').value.trim() || userIn;
                 const last = document.getElementById('reg-lastname').value.trim() || "";
-                const newUser = { 
-                    username: userIn, password: passIn, firstName: first, lastName: last, 
-                    score: 0, profilePic: tempProfilePic, 
-                    inventory: [], activeXpBuff: null, activeLuckBuff: null 
+                const newUser = {
+                    username: userIn, password: passIn, firstName: first, lastName: last,
+                    score: 0, profilePic: tempProfilePic,
+                    inventory: [], activeXpBuff: null, activeLuckBuff: null
                 };
                 db.ref('users/' + safeId).set(newUser).then(() => loginSuccess(safeId, newUser));
             }
@@ -420,24 +457,26 @@ function openProfileSettings() {
     document.getElementById('edit-lastname').value = userData.lastName || "";
     document.getElementById('edit-password').value = userData.password || "";
     document.getElementById('edit-preview').src = userData.profilePic || "https://placehold.co/100x100/eee/999?text=U";
-    tempProfilePic = userData.profilePic || ""; 
+    tempProfilePic = userData.profilePic || "";
     document.getElementById('settings-modal').style.display = 'flex';
 }
 function closeProfileSettings() { document.getElementById('settings-modal').style.display = 'none'; }
 
-function saveProfileChanges() {
+async function saveProfileChanges() {
     const newFirst = document.getElementById('edit-firstname').value.trim();
     const newLast = document.getElementById('edit-lastname').value.trim();
     const newPass = document.getElementById('edit-password').value.trim();
-    if(!newFirst || !newPass) return alert("Required fields missing");
+    if (!newFirst || !newPass) {
+        await showCustomConfirm("Error", "Required fields missing", "❌");
+        return;
+    }
 
     const updates = { firstName: newFirst, lastName: newLast, password: newPass, profilePic: tempProfilePic || userData.profilePic };
-    db.ref('users/' + userId).update(updates).then(() => {
-        userData = { ...userData, ...updates };
-        updateUI();
-        closeProfileSettings();
-        alert((currentLang === 'en') ? "Profile Updated!" : "อัปเดตข้อมูลแล้ว!");
-    });
+    await db.ref('users/' + userId).update(updates);
+    userData = { ...userData, ...updates };
+    updateUI();
+    closeProfileSettings();
+    await showCustomConfirm("แจ้งเตือน", (currentLang === 'en') ? "Profile Updated!" : "อัปเดตข้อมูลแล้ว!", "✅");
 }
 
 function getRank(score) {
@@ -454,7 +493,7 @@ function updateUI(checkLevelUp = false) {
     document.getElementById('big-score-val').innerText = (userData.score || 0);
     const imgUrl = userData.profilePic || "https://placehold.co/100x100/eee/999?text=" + (userData.firstName.charAt(0) || "U");
     document.getElementById('topbar-img').src = imgUrl;
-    
+
     const t = textData[currentLang];
     document.getElementById('btn-lang').innerText = currentLang.toUpperCase();
     document.getElementById('login-lang-btn').innerText = currentLang.toUpperCase();
@@ -467,12 +506,12 @@ function updateUI(checkLevelUp = false) {
     oldRankEl.className = `rank-badge ${currentRankObj.class}`;
 
     if (checkLevelUp && oldRankName !== currentRankObj.name && oldRankName !== "Beginner") {
-         showLevelUpModal(currentRankObj.name);
+        showLevelUpModal(currentRankObj.name);
     }
 
     const btnMain = document.getElementById('btn-main');
     const txtBtn = document.getElementById('txt-btn-start');
-    if(isRunning) {
+    if (isRunning) {
         txtBtn.innerText = textData[currentLang].btnScan;
     } else {
         txtBtn.innerText = textData[currentLang].btnStart;
@@ -483,7 +522,7 @@ function showLevelUpModal(rankName) {
     const modal = document.getElementById('levelup-modal');
     document.getElementById('lvl-rank-name').innerText = rankName;
     modal.style.display = 'flex';
-    for(let i=0; i<50; i++) { createConfetti(modal); }
+    for (let i = 0; i < 50; i++) { createConfetti(modal); }
 }
 
 function createConfetti(container) {
@@ -498,7 +537,7 @@ function createConfetti(container) {
 }
 
 function closeLevelUpModal() { document.getElementById('levelup-modal').style.display = 'none'; }
-function toggleLanguage() { currentLang = (currentLang==='en')?'th':'en'; updateUI(); }
+function toggleLanguage() { currentLang = (currentLang === 'en') ? 'th' : 'en'; updateUI(); }
 function toggleSound() { isSoundOn = !isSoundOn; document.getElementById('btn-sound').classList.toggle('active'); }
 
 async function handleMainButton() {
@@ -510,16 +549,16 @@ async function startCamera() {
     const container = document.getElementById('webcam-container');
     const txtBtn = document.getElementById('txt-btn-start');
 
-    btn.disabled = true; 
+    btn.disabled = true;
     txtBtn.innerText = textData[currentLang].loading;
 
     try {
         if (webcam && webcam.canvas) { webcam.stop(); webcam = null; }
-        container.innerHTML = ""; 
+        container.innerHTML = "";
 
         const size = IMG_MAX_PX;
-        const flip = !useBackCamera; 
-        
+        const flip = !useBackCamera;
+
         webcam = new tmImage.Webcam(size, size, flip);
         let constraints = { facingMode: useBackCamera ? { exact: "environment" } : "user" };
 
@@ -534,7 +573,7 @@ async function startCamera() {
         container.appendChild(webcam.canvas);
 
         isRunning = true;
-        btn.classList.add('scanning-mode'); 
+        btn.classList.add('scanning-mode');
         btn.innerHTML = `<i class="bi bi-bullseye"></i> <span id="txt-btn-start">${textData[currentLang].btnScan}</span>`;
         btn.disabled = false;
         document.getElementById('btn-stop-cam').style.display = 'inline-flex';
@@ -542,36 +581,36 @@ async function startCamera() {
 
     } catch (e) {
         console.error(e);
-        alert("Camera Error: " + e.message);
+        await showCustomConfirm("Error", "Camera Error: " + e.message, "❌");
         stopScanning();
     }
 }
 
 function stopScanning() {
-    isRunning = false; 
+    isRunning = false;
     cancelAnimationFrame(animationId);
-    if(webcam) { webcam.stop(); webcam = null; }
-    
+    if (webcam) { webcam.stop(); webcam = null; }
+
     document.getElementById('scan-line').style.display = 'none';
-    document.getElementById('btn-stop-cam').style.display = 'none'; 
+    document.getElementById('btn-stop-cam').style.display = 'none';
     const btn = document.getElementById('btn-main');
     btn.classList.remove('scanning-mode');
     btn.disabled = false;
     btn.innerHTML = `<i class="bi bi-camera-fill"></i> <span id="txt-btn-start">${textData[currentLang].btnStart}</span>`;
-    
+
     const container = document.getElementById('webcam-container');
-    if(container) {
+    if (container) {
         container.innerHTML = `<div id=\"placeholder-ui\" class=\"placeholder-content\"><div class=\"pulse-ring\"></div><i class=\"bi bi-camera-video-fill\"></i><p>Ready to Scan</p></div>`;
     }
 }
 
 function switchCameraMode() {
     useBackCamera = !useBackCamera;
-    if(isRunning) { stopScanning(); setTimeout(() => { startCamera(); }, 500); }
+    if (isRunning) { stopScanning(); setTimeout(() => { startCamera(); }, 500); }
 }
 
 async function loop() {
-    if(isRunning && webcam) { webcam.update(); animationId = window.requestAnimationFrame(loop); }
+    if (isRunning && webcam) { webcam.update(); animationId = window.requestAnimationFrame(loop); }
 }
 
 function resizeCanvasForAI(srcCanvas) {
@@ -587,7 +626,7 @@ function resizeCanvasForAI(srcCanvas) {
     const newH = Math.round(h * scale);
 
     const offscreen = document.createElement('canvas');
-    offscreen.width  = newW;
+    offscreen.width = newW;
     offscreen.height = newH;
     offscreen.getContext('2d').drawImage(srcCanvas, 0, 0, newW, newH);
 
@@ -605,12 +644,12 @@ async function captureAndAnalyzeWithGroq() {
         const msg = currentLang === 'en'
             ? `Please wait ${wait}s before scanning again.`
             : `รอ ${wait} วินาทีก่อนสแกนใหม่นะครับ`;
-        alert(msg);
+        await showCustomConfirm("แจ้งเตือน", msg, "⏱️");
         return;
     }
 
     if (!GROQ_API_KEYS.length || GROQ_API_KEYS[0].includes("YOUR_GROQ")) {
-        alert("Please set your GROQ_API_KEY in script.js first!");
+        await showCustomConfirm("Error", "Please set your GROQ_API_KEY in script.js first!", "❌");
         return;
     }
 
@@ -727,19 +766,19 @@ Return JSON ONLY: {"category":"...","name_en":"...","name_th":"...","desc_en":".
                 : "⚠️ AI ยุ่งอยู่ กรุณารอ 10-15 วินาทีแล้วลองใหม่ครับ")
             : "AI Error: " + error.message;
 
-        alert(userMsg);
+        await showCustomConfirm("Error", userMsg, "❌");
     } finally {
         isScanInProgress = false;
     }
 }
 
-function handleAIResult(resultData, btn, originalText) {
+async function handleAIResult(resultData, btn, originalText) {
     document.getElementById('scan-line').style.display = 'none';
     btn.disabled = false;
     btn.innerHTML = originalText;
 
     if (!resultData || resultData.category === "Unknown") {
-        alert(currentLang === 'en' ? "No waste detected. Try again." : "ไม่พบขยะในภาพ ลองใหม่อีกครั้ง");
+        await showCustomConfirm("แจ้งเตือน", currentLang === 'en' ? "No waste detected. Try again." : "ไม่พบขยะในภาพ ลองใหม่อีกครั้ง", "❌");
     } else {
         pendingItem = rollItemDrop();
         showResultPopupFromAI(resultData);
@@ -748,7 +787,7 @@ function handleAIResult(resultData, btn, originalText) {
 
 function showResultPopupFromAI(aiData) {
     const card = document.getElementById('modal-card-content');
-    
+
     const wasteStandards = {
         "Recyclable": { xp: 10, colorClass: "theme-yellow", icon: "bi-recycle", binNameEN: "Yellow Bin (Recycle)", binNameTH: "ถังเหลือง (รีไซเคิล)" },
         "Organic": { xp: 5, colorClass: "theme-green", icon: "bi-flower1", binNameEN: "Green Bin (Organic)", binNameTH: "ถังเขียว (อินทรีย์)" },
@@ -762,13 +801,13 @@ function showResultPopupFromAI(aiData) {
 
     // บันทึกสถิติและภารกิจ
     logScan(category);
-    
+
     // ตรวจสอบโหมดก่อนสั่งเปิดถังขยะอัตโนมัติ
     if (isAutoOpenEnabled) {
         sendIoTCommand(category);
-        sendUSBCommand(category); 
+        sendUSBCommand(category);
     }
-    
+
     updateQuestProgress(category);
 
     card.classList.remove('theme-yellow', 'theme-green', 'theme-red', 'theme-blue');
@@ -790,19 +829,19 @@ function showResultPopupFromAI(aiData) {
     document.getElementById('res-icon').className = `bi ${info.icon}`;
 
     document.getElementById('result-modal').style.display = "flex";
-    
-    if(isSoundOn) {
+
+    if (isSoundOn) {
         const textToSpeak = isTH ? `${aiData.name_th}. ${info.binNameTH}` : `${aiData.name_en}. ${info.binNameEN}`;
         const u = new SpeechSynthesisUtterance(textToSpeak);
         u.lang = isTH ? 'th-TH' : 'en-US';
         window.speechSynthesis.speak(u);
     }
-    
+
     userData.score = (userData.score || 0) + xpResult.total;
-    if(userId) {
+    if (userId) {
         db.ref('users/' + userId).update({ score: userData.score });
     }
-    updateUI(true); 
+    updateUI(true);
 }
 
 function closeResultModal() {
@@ -814,7 +853,7 @@ function closeResultModal() {
     }
 }
 
-document.getElementById('username-input').addEventListener("keyup", function(event) {
+document.getElementById('username-input').addEventListener("keyup", function (event) {
     if (event.key === "Enter") handleAuthAction();
 });
 
@@ -910,29 +949,29 @@ function sendIoTCommand(category) {
         updates['iotBins/' + color + '/lastUpdated'] = Date.now();
     });
     updates['iotBins/' + binColor + '/lastOpenedBy'] = userData.firstName || userId;
-    
+
     db.ref().update(updates).catch(err => console.warn("Firebase Update Skipped (Guest)"));
 
     if (iotAutoCloseTimer) clearTimeout(iotAutoCloseTimer);
     iotAutoCloseTimer = setTimeout(() => {
-        db.ref('iotBins/' + binColor + '/open').set(false).catch(e => {});
+        db.ref('iotBins/' + binColor + '/open').set(false).catch(e => { });
         iotAutoCloseTimer = null;
     }, 4500);
 }
 
 function manualIoTToggle(color) {
-    sendManualUSBCommand(color); 
-    
+    sendManualUSBCommand(color);
+
     const binRef = db.ref('iotBins/' + color);
     binRef.once('value').then(snap => {
         const current = snap.val() || {};
         const newState = !current.open;
-        
+
         binRef.update({ open: newState, lastUpdated: Date.now(), lastOpenedBy: userData.firstName || userId })
-              .catch(e => console.warn("Firebase Toggle Skipped (Guest)"));
-              
+            .catch(e => console.warn("Firebase Toggle Skipped (Guest)"));
+
         if (newState) {
-            setTimeout(() => { db.ref('iotBins/' + color + '/open').set(false).catch(e => {}); }, 4500);
+            setTimeout(() => { db.ref('iotBins/' + color + '/open').set(false).catch(e => { }); }, 4500);
         }
     }).catch(e => console.warn("Firebase Read Skipped (Guest)"));
 }
@@ -1130,39 +1169,41 @@ function updateQuestProgress(category) {
     });
 }
 
-function claimQuestReward(questIdx) {
+async function claimQuestReward(questIdx) {
     if (!userId) return;
     const today = getTodayDateStr();
     const quest = getDailyQuests()[questIdx];
     const entryRef = db.ref('users/' + userId + '/questProgress/' + today + '/' + questIdx);
-    entryRef.once('value').then(snap => {
-        const qp = snap.val() || {};
-        if (qp.claimed || (qp.progress || 0) < quest.target) return;
-        entryRef.update({ claimed: true });
-        userData.score = (userData.score || 0) + quest.reward.xp;
-        const finish = (extraInv) => {
-            const upd = { score: userData.score };
-            if (extraInv) upd.inventory = extraInv;
-            db.ref('users/' + userId).update(upd);
-            updateUI(true);
-            loadDailyQuests(true);
-            alert('🎉 รับรางวัลแล้ว! +' + quest.reward.xp + ' XP' + (quest.reward.item ? ' + ไอเทม!' : ''));
-        };
-        if (quest.reward.item) {
-            const itemData = ITEM_DB.find(x => x.id === quest.reward.item);
-            if (itemData) {
-                db.ref('users/' + userId + '/inventory').once('value').then(invSnap => {
-                    let inv = invSnap.val() || [];
-                    if (!Array.isArray(inv)) inv = [];
-                    inv.push(itemData);
-                    userData.inventory = inv;
-                    finish(inv);
-                });
-                return;
-            }
+
+    const snap = await entryRef.once('value');
+    const qp = snap.val() || {};
+    if (qp.claimed || (qp.progress || 0) < quest.target) return;
+
+    await entryRef.update({ claimed: true });
+    userData.score = (userData.score || 0) + quest.reward.xp;
+
+    const finish = async (extraInv) => {
+        const upd = { score: userData.score };
+        if (extraInv) upd.inventory = extraInv;
+        await db.ref('users/' + userId).update(upd);
+        updateUI(true);
+        loadDailyQuests(true);
+        await showCustomConfirm("แจ้งเตือน", '🎉 รับรางวัลแล้ว! +' + quest.reward.xp + ' XP' + (quest.reward.item ? ' + ไอเทม!' : ''), "🎁");
+    };
+
+    if (quest.reward.item) {
+        const itemData = ITEM_DB.find(x => x.id === quest.reward.item);
+        if (itemData) {
+            const invSnap = await db.ref('users/' + userId + '/inventory').once('value');
+            let inv = invSnap.val() || [];
+            if (!Array.isArray(inv)) inv = [];
+            inv.push(itemData);
+            userData.inventory = inv;
+            finish(inv);
+            return;
         }
-        finish();
-    });
+    }
+    finish();
 }
 
 function checkQuestBadge(progress, dailyQuests) {
@@ -1273,13 +1314,13 @@ function renderAdminDashboard(d) {
 // ============================================================
 // 🔌 WEB SERIAL API (MICRO:BIT USB CONNECTION - AUTO CONNECT)
 // ============================================================
-let serialPort       = null;
-let serialWriter     = null;
-let serialReader     = null;
+let serialPort = null;
+let serialWriter = null;
+let serialReader = null;
 let serialReadActive = false;
-let _usbToastTimer   = null;
-let _serialLogCount  = 0;
-const MAX_LOG_LINES  = 80;
+let _usbToastTimer = null;
+let _serialLogCount = 0;
+const MAX_LOG_LINES = 80;
 
 function getTimestamp() {
     const d = new Date();
@@ -1314,11 +1355,11 @@ function clearSerialLog() {
 }
 
 function setSerialConnectedUI(connected) {
-    const bar   = document.getElementById('serial-status-bar');
-    const dot   = document.getElementById('serial-dot');
+    const bar = document.getElementById('serial-status-bar');
+    const dot = document.getElementById('serial-dot');
     const label = document.getElementById('serial-status-label');
-    const btnC  = document.getElementById('btn-serial-connect');
-    const btnD  = document.getElementById('btn-serial-disconnect');
+    const btnC = document.getElementById('btn-serial-connect');
+    const btnD = document.getElementById('btn-serial-disconnect');
 
     if (!bar) return;
 
@@ -1380,7 +1421,7 @@ async function tryAutoConnectSerial() {
 
 async function connectSerial() {
     if (!('serial' in navigator)) {
-        alert('❌ เบราว์เซอร์ของคุณไม่รองรับ Web Serial API\nกรุณาใช้ Google Chrome หรือ Microsoft Edge เวอร์ชันล่าสุด');
+        await showCustomConfirm("Error", '❌ เบราว์เซอร์ของคุณไม่รองรับ Web Serial API\nกรุณาใช้ Google Chrome หรือ Microsoft Edge เวอร์ชันล่าสุด', "❌");
         return;
     }
 
@@ -1402,7 +1443,7 @@ async function connectSerial() {
     } catch (error) {
         console.error('[Web Serial] Connection failed:', error);
         if (error.name !== 'NotFoundError') {
-            alert('การเชื่อมต่อล้มเหลว กรุณาเลือกพอร์ต Micro:bit');
+            await showCustomConfirm("Error", 'การเชื่อมต่อล้มเหลว กรุณาเลือกพอร์ต Micro:bit', "❌");
             appendSerialLog('❌ Connection failed: ' + error.message, 'err');
         }
     }
@@ -1413,7 +1454,7 @@ async function disconnectSerial() {
     try {
         if (serialReader) { await serialReader.cancel(); serialReader = null; }
         if (serialWriter) { await serialWriter.close(); serialWriter = null; }
-        if (serialPort)   { await serialPort.close();   serialPort   = null; }
+        if (serialPort) { await serialPort.close(); serialPort = null; }
     } catch (e) {
         console.warn('[Web Serial] Disconnect error:', e);
     }
@@ -1452,8 +1493,8 @@ function handleSerialIncoming(msg) {
     if (msg.startsWith('STATUS:')) {
         const parts = msg.split(':');
         if (parts.length === 3) {
-            const color  = parts[1].toLowerCase();
-            const state  = parts[2];
+            const color = parts[1].toLowerCase();
+            const state = parts[2];
             const isOpen = state === 'OPENED';
             if (['yellow', 'green', 'red', 'blue'].includes(color)) {
                 db.ref('iotBins/' + color + '/open').set(isOpen);
@@ -1468,7 +1509,7 @@ function handleSerialIncoming(msg) {
 async function sendUSBCommand(category) {
     if (!serialWriter) return;
     const CATEGORY_TO_COLOR = { 'Recyclable': 'YELLOW', 'Organic': 'GREEN', 'Hazardous': 'RED', 'General': 'BLUE' };
-    const color   = CATEGORY_TO_COLOR[category] || 'BLUE';
+    const color = CATEGORY_TO_COLOR[category] || 'BLUE';
     const command = 'OPEN:' + color + '\n';
     try {
         await serialWriter.write(command);

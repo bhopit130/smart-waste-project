@@ -1,29 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#4361ee">
+    <meta name="theme-color" content="#ffffff">
     <!-- PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="WasteAI">
-    <meta name="description" content="ระบบจำแนกขยะอัจฉริยะด้วย AI สำหรับโรงเรียนและชุมชน">
+    <meta name="apple-mobile-web-app-title" content="SmartWaste 2.0">
+    <meta name="description"
+        content="Smart Waste Classifier 2.0: Smart Bin Prototype — ระบบจำแนกขยะอัจฉริยะด้วย AI สำหรับโรงเรียนและชุมชน">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="Logo.png">
-    <title>Smart Waste Classifier</title>
+    <title>Smart Waste Classifier 2.0: Smart Bin Prototype</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Prompt:wght@300;400;600;700;800&family=Poppins:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
     <!-- ✅ PWA Install Banner -->
     <div class="pwa-banner" id="pwa-banner">
         <div class="pwa-banner-inner">
-            <img src="Logo.png" class="pwa-logo" onerror="this.src='https://placehold.co/40x40/4361ee/fff?text=W'">
+            <img src="Logo.png" class="pwa-logo" onerror="this.src='https://placehold.co/40x40/16a34a/fff?text=W'">
             <div class="pwa-text">
                 <div class="pwa-title">ติดตั้งแอปพลิเคชัน</div>
                 <div class="pwa-sub">เพิ่มลงหน้าจอหลักได้เลย!</div>
@@ -42,7 +47,9 @@
             <div class="login-logo">
                 <img src="Logo.png" onerror="this.src='https://placehold.co/80x80/eee/999?text=DB'">
             </div>
-            <h1 class="app-title-login">Smart Waste<br>Classifier</h1>
+            <h1 class="app-title-login">Smart Waste<br>Classifier <span
+                    style="font-size:0.55em; background:linear-gradient(90deg,#4cc9f0,#06d6a0); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">2.0</span>
+            </h1>
             <h2 id="auth-title">Welcome Back</h2>
             <p id="auth-subtitle">Sign in to continue</p>
 
@@ -51,7 +58,8 @@
                     <img id="reg-preview" src="https://placehold.co/100x100/eee/999?text=Upload">
                     <div class="cam-icon"><i class="bi bi-camera-fill"></i></div>
                 </div>
-                <input type="file" id="reg-file-input" hidden accept="image/*" onchange="handleImageUpload(this, 'reg-preview')">
+                <input type="file" id="reg-file-input" hidden accept="image/*"
+                    onchange="handleImageUpload(this, 'reg-preview')">
                 <div style="font-size:0.7rem; color:#666; margin-top:5px;">(Optional) Tap to upload photo</div>
             </div>
 
@@ -81,8 +89,8 @@
                     <img src="Logo.png" alt="Logo">
                 </div>
                 <div class="text-group">
-                    <h1>Smart Waste</h1>
-                    <span class="badge-live">● Online System</span>
+                    <h1>Smart Waste <span style="font-size:0.7em; opacity:0.75;">2.0</span></h1>
+                    <span class="badge-live">Online · Smart Bin</span>
                 </div>
             </div>
             <div style="display:flex; gap:10px;">
@@ -123,13 +131,18 @@
                         </button>
                     </div>
                     <div class="tools-group-right" style="display:flex; gap:10px;">
-                        <button id="btn-auto-bin" class="icon-btn" onclick="toggleAutoOpen()" style="background-color: #06d6a0; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;" title="สลับโหมดเปิดถังอัตโนมัติ">
-        <i class="bi bi-trash2-fill"></i>
-    </button>
+                        <button id="btn-auto-bin" class="icon-btn" onclick="toggleAutoOpen()"
+                            style="background-color: #06d6a0; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;"
+                            title="สลับโหมดเปิดถังอัตโนมัติ">
+                            <i class="bi bi-trash2-fill"></i>
+                        </button>
                         <button class="icon-btn" onclick="toggleLanguage()" id="btn-lang">EN</button>
-                        <button class="icon-btn active" onclick="toggleSound()" id="btn-sound"><i class="bi bi-volume-up-fill"></i></button>
-                        <button class="icon-btn" onclick="switchCameraMode()" id="btn-switch-cam"><i class="bi bi-arrow-repeat"></i></button>
-                        <button class="icon-btn danger-btn" onclick="stopScanning()" id="btn-stop-cam" style="display:none; color: #ef476f; border-color: #ef476f;">
+                        <button class="icon-btn active" onclick="toggleSound()" id="btn-sound"><i
+                                class="bi bi-volume-up-fill"></i></button>
+                        <button class="icon-btn" onclick="switchCameraMode()" id="btn-switch-cam"><i
+                                class="bi bi-arrow-repeat"></i></button>
+                        <button class="icon-btn danger-btn" onclick="stopScanning()" id="btn-stop-cam"
+                            style="display:none; color: #ef476f; border-color: #ef476f;">
                             <i class="bi bi-x-lg"></i>
                         </button>
                     </div>
@@ -171,7 +184,9 @@
 
     <div class="modal-overlay" id="result-modal">
         <div class="modal-card" id="modal-card-content">
-            <div class="modal-header"><div class="xp-badge-lg" id="res-xp">+10 XP</div></div>
+            <div class="modal-header">
+                <div class="xp-badge-lg" id="res-xp">+10 XP</div>
+            </div>
             <div class="modal-body">
                 <div class="result-icon-wrapper"><i id="res-icon" class="bi bi-recycle"></i></div>
                 <h2 id="res-title">Recyclable</h2>
@@ -197,10 +212,14 @@
             </div>
             <div class="tutorial-section">
                 <h4>🗑️ Waste Types &amp; XP</h4>
-                <div class="tut-row"><span class="badge-dot" style="background:var(--warning);"></span> <b>Yellow Bin (Recycle)</b>: +10 XP</div>
-                <div class="tut-row"><span class="badge-dot" style="background:var(--success);"></span> <b>Green Bin (Organic)</b>: +5 XP</div>
-                <div class="tut-row"><span class="badge-dot" style="background:var(--danger);"></span> <b>Red Bin (Hazardous)</b>: +15 XP</div>
-                <div class="tut-row"><span class="badge-dot" style="background:var(--primary);"></span> <b>Blue Bin (General)</b>: +2 XP</div>
+                <div class="tut-row"><span class="badge-dot" style="background:var(--warning);"></span> <b>Yellow Bin
+                        (Recycle)</b>: +10 XP</div>
+                <div class="tut-row"><span class="badge-dot" style="background:var(--success);"></span> <b>Green Bin
+                        (Organic)</b>: +5 XP</div>
+                <div class="tut-row"><span class="badge-dot" style="background:var(--danger);"></span> <b>Red Bin
+                        (Hazardous)</b>: +15 XP</div>
+                <div class="tut-row"><span class="badge-dot" style="background:var(--primary);"></span> <b>Blue Bin
+                        (General)</b>: +2 XP</div>
             </div>
             <div class="tutorial-section">
                 <h4>🎒 Items &amp; Rarity</h4>
@@ -220,7 +239,8 @@
             </div>
             <div class="tutorial-section">
                 <h4>🎯 Daily Quests</h4>
-                <p style="font-size:0.85rem; color:#666;">Complete daily missions for bonus XP and special items! Quests reset every midnight.</p>
+                <p style="font-size:0.85rem; color:#666;">Complete daily missions for bonus XP and special items! Quests
+                    reset every midnight.</p>
             </div>
             <button class="btn-gradient" onclick="closeTutorial()">Got it!</button>
         </div>
@@ -251,7 +271,8 @@
         <div class="modal-card" style="max-height: 80vh; overflow-y: auto;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h3 style="margin:0;"><i class="bi bi-backpack-fill"></i> My Bag</h3>
-                <button onclick="closeInventory()" style="background:none;border:none;font-size:1.5rem;">&times;</button>
+                <button onclick="closeInventory()"
+                    style="background:none;border:none;font-size:1.5rem;">&times;</button>
             </div>
             <div id="active-buff-container" style="margin-bottom:15px;"></div>
             <div id="inventory-grid" class="inventory-grid">
@@ -262,13 +283,16 @@
 
     <div class="modal-overlay" id="settings-modal" style="align-items: center;">
         <div class="modal-card settings-card">
-            <div style="text-align: right;"><button onclick="closeProfileSettings()" style="background:none;border:none;font-size:1.5rem;">&times;</button></div>
+            <div style="text-align: right;"><button onclick="closeProfileSettings()"
+                    style="background:none;border:none;font-size:1.5rem;">&times;</button></div>
             <h3>Edit Profile</h3>
-            <div class="profile-upload-circle" onclick="document.getElementById('edit-file-input').click()" style="margin: 0 auto 20px;">
+            <div class="profile-upload-circle" onclick="document.getElementById('edit-file-input').click()"
+                style="margin: 0 auto 20px;">
                 <img id="edit-preview" src="">
                 <div class="cam-icon"><i class="bi bi-pencil-fill"></i></div>
             </div>
-            <input type="file" id="edit-file-input" hidden accept="image/*" onchange="handleImageUpload(this, 'edit-preview')">
+            <input type="file" id="edit-file-input" hidden accept="image/*"
+                onchange="handleImageUpload(this, 'edit-preview')">
             <input type="text" id="edit-firstname" class="modern-input" placeholder="First Name">
             <input type="text" id="edit-lastname" class="modern-input" placeholder="Last Name">
             <input type="password" id="edit-password" class="modern-input" placeholder="New Password">
@@ -298,12 +322,16 @@
                     <h3 style="margin:0; color:white; display:flex; align-items:center; gap:8px;">
                         <i class="bi bi-trophy-fill" style="color:#FFD700;"></i> Global Leaderboard
                     </h3>
-                    <p style="margin:0; font-size:0.8rem; color:rgba(255,255,255,0.75);">กระดานอันดับผู้นำ · Realtime</p>
+                    <p style="margin:0; font-size:0.8rem; color:rgba(255,255,255,0.75);">กระดานอันดับผู้นำ · Realtime
+                    </p>
                 </div>
-                <button onclick="closeLeaderboard()" style="background:none;border:none;font-size:1.5rem;color:white;cursor:pointer;">×</button>
+                <button onclick="closeLeaderboard()"
+                    style="background:none;border:none;font-size:1.5rem;color:white;cursor:pointer;">×</button>
             </div>
             <div class="podium-container" id="podium-container">
-                <div class="lb-loading"><div class="lb-spinner"></div></div>
+                <div class="lb-loading">
+                    <div class="lb-spinner"></div>
+                </div>
             </div>
             <div class="rankings-list" id="rankings-list"></div>
         </div>
@@ -317,10 +345,13 @@
                     <h3 style="margin:0;">⚡ Daily Quests</h3>
                     <p style="margin:0; font-size:0.8rem; color:#888;" id="quests-reset-time">รีเซ็ตทุกเที่ยงคืน</p>
                 </div>
-                <button onclick="closeQuests()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;">×</button>
+                <button onclick="closeQuests()"
+                    style="background:none;border:none;font-size:1.5rem;cursor:pointer;">×</button>
             </div>
             <div id="quests-list" style="margin-top:15px;">
-                <div class="lb-loading"><div class="lb-spinner"></div></div>
+                <div class="lb-loading">
+                    <div class="lb-spinner"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -335,10 +366,13 @@
                     </h3>
                     <p style="margin:0; font-size:0.8rem; color:#888;">สถิติการใช้งานระบบทั้งหมด</p>
                 </div>
-                <button onclick="closeAdminDashboard()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;">×</button>
+                <button onclick="closeAdminDashboard()"
+                    style="background:none;border:none;font-size:1.5rem;cursor:pointer;">×</button>
             </div>
             <div class="admin-stats-grid" id="admin-stats-grid">
-                <div class="lb-loading"><div class="lb-spinner"></div></div>
+                <div class="lb-loading">
+                    <div class="lb-spinner"></div>
+                </div>
             </div>
             <div class="admin-chart-wrap">
                 <h4 class="admin-section-title"><i class="bi bi-pie-chart-fill"></i> สัดส่วนขยะแต่ละประเภท</h4>
@@ -367,7 +401,8 @@
                     </h3>
                     <p style="margin:0; font-size:0.8rem; color:#888;">ควบคุมถังขยะอัจฉริยะแบบเรียลไทม์</p>
                 </div>
-                <button onclick="closeIoTPanel()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;">×</button>
+                <button onclick="closeIoTPanel()"
+                    style="background:none;border:none;font-size:1.5rem;cursor:pointer;">×</button>
             </div>
 
             <!-- 🔌 USB Connection Status Bar -->
@@ -378,7 +413,8 @@
                     <button class="serial-connect-btn" id="btn-serial-connect" onclick="connectSerial()">
                         <i class="bi bi-usb-plug-fill"></i> เชื่อมต่อ
                     </button>
-                    <button class="serial-disconnect-btn" id="btn-serial-disconnect" onclick="disconnectSerial()" style="display:none;">
+                    <button class="serial-disconnect-btn" id="btn-serial-disconnect" onclick="disconnectSerial()"
+                        style="display:none;">
                         <i class="bi bi-x-circle-fill"></i> ตัดเชื่อมต่อ
                     </button>
                 </div>
@@ -443,9 +479,10 @@
             <div class="iot-guide-box" style="margin-top:12px;">
                 <div class="iot-guide-title"><i class="bi bi-info-circle-fill"></i> วิธีเชื่อมต่อฮาร์ดแวร์</div>
                 <p class="iot-guide-desc">เมื่อ AI วิเคราะห์ผล ระบบส่งคำสั่งไปยัง Firebase และ Micro:bit อัตโนมัติ<br>
-                ESPs / KidBright อ่านค่าจาก Firebase path:</p>
+                    ESPs / KidBright อ่านค่าจาก Firebase path:</p>
                 <div class="iot-code-block">📡 iotBins/{color}/open → true/false</div>
-                <p class="iot-guide-desc" style="margin-top:8px;margin-bottom:0;">ถังปิดอัตโนมัติหลัง <b>4 วินาที</b> · ดู <b>microbit_setup.md</b> สำหรับวิธีต่อวงจร</p>
+                <p class="iot-guide-desc" style="margin-top:8px;margin-bottom:0;">ถังปิดอัตโนมัติหลัง <b>4 วินาที</b> ·
+                    ดู <b>microbit_setup.md</b> สำหรับวิธีต่อวงจร</p>
             </div>
         </div>
     </div>
@@ -455,7 +492,65 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <script src="script.js"></script>
+
+    <script>
+        // ============================================================
+        // PWA INSTALL BANNER — with auto-dismiss
+        // ============================================================
+        let _deferredInstallPrompt = null;
+        let _pwaDismissTimer = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            _deferredInstallPrompt = e;
+            const banner = document.getElementById('pwa-banner');
+            if (banner) {
+                banner.style.display = 'block';
+                // Auto-dismiss after 8 seconds if user doesn't interact
+                _pwaDismissTimer = setTimeout(() => { dismissPWA(); }, 8000);
+            }
+        });
+
+        function installPWA() {
+            if (_pwaDismissTimer) clearTimeout(_pwaDismissTimer);
+            const banner = document.getElementById('pwa-banner');
+            if (banner) banner.style.display = 'none';
+            if (_deferredInstallPrompt) {
+                _deferredInstallPrompt.prompt();
+                _deferredInstallPrompt.userChoice.then(() => {
+                    _deferredInstallPrompt = null;
+                });
+            }
+        }
+
+        function dismissPWA() {
+            if (_pwaDismissTimer) clearTimeout(_pwaDismissTimer);
+            const banner = document.getElementById('pwa-banner');
+            if (!banner) return;
+            // Smooth slide-out animation
+            banner.classList.add('hiding');
+            setTimeout(() => { banner.style.display = 'none'; banner.classList.remove('hiding'); }, 500);
+        }
+    </script>
+    <!-- ========================================== -->
+    <!-- 🛑 CUSTOM POPUP CONFIRM / ALERT MODAL 🛑 -->
+    <!-- ========================================== -->
+    <div class="modal-overlay" id="custom-dialog-modal" style="z-index: 9999; align-items: center;">
+        <div class="modal-card" style="max-width: 320px; padding: 30px 20px; text-align: center;">
+            <div id="dialog-icon" style="font-size: 3.5rem; margin-bottom: 10px; animation: bounce 1s infinite;">❓</div>
+            <h3 id="dialog-title" style="margin: 0 0 10px; color: var(--primary);">ยืนยันการทำรายการ</h3>
+            <p id="dialog-message" style="color: #666; font-size: 0.9rem; margin-bottom: 25px; line-height: 1.5;">
+                ข้อความ...</p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button class="btn-danger-outline" id="btn-dialog-cancel"
+                    style="margin: 0; padding: 10px; flex: 1; border-radius: 12px;">ยกเลิก</button>
+                <button class="btn-gradient" id="btn-dialog-ok" style="margin: 0; padding: 10px; flex: 1;">ตกลง</button>
+            </div>
+        </div>
+    </div>
 </body>
+
 </html>

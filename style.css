@@ -1723,8 +1723,15 @@ body {
 }
 
 @keyframes dot-pulse {
-    0%, 100% { box-shadow: 0 0 0 3px rgba(43, 138, 62, 0.25); }
-    50%       { box-shadow: 0 0 0 6px rgba(43, 138, 62, 0.08); }
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 3px rgba(43, 138, 62, 0.25);
+    }
+
+    50% {
+        box-shadow: 0 0 0 6px rgba(43, 138, 62, 0.08);
+    }
 }
 
 .serial-status-label {
@@ -1832,19 +1839,44 @@ body {
     line-height: 1.7;
 }
 
-.serial-log-console::-webkit-scrollbar { width: 4px; }
-.serial-log-console::-webkit-scrollbar-track { background: #111827; }
-.serial-log-console::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+.serial-log-console::-webkit-scrollbar {
+    width: 4px;
+}
+
+.serial-log-console::-webkit-scrollbar-track {
+    background: #111827;
+}
+
+.serial-log-console::-webkit-scrollbar-thumb {
+    background: #374151;
+    border-radius: 4px;
+}
 
 .serial-log-idle {
     color: #4b5563;
     font-style: italic;
 }
 
-.log-tx { color: #4cc9f0; } /* Sent (→) */
-.log-rx { color: #86efac; } /* Received (←) */
-.log-err { color: #f87171; } /* Error */
-.log-sys { color: #fbbf24; } /* System */
+.log-tx {
+    color: #4cc9f0;
+}
+
+/* Sent (→) */
+.log-rx {
+    color: #86efac;
+}
+
+/* Received (←) */
+.log-err {
+    color: #f87171;
+}
+
+/* Error */
+.log-sys {
+    color: #fbbf24;
+}
+
+/* System */
 
 /* ============================
    BIN FILL INDICATOR BAR
@@ -1876,8 +1908,15 @@ body {
 }
 
 @keyframes usb-toast-in {
-    from { opacity: 0; transform: translateY(20px) scale(0.9); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 .usb-toast-inner {
@@ -1908,13 +1947,318 @@ body {
 }
 
 @keyframes bin-open-bounce {
-    0%   { transform: scale(1); }
-    50%  { transform: scale(1.25) rotate(-5deg); }
-    100% { transform: scale(1.1); }
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.25) rotate(-5deg);
+    }
+
+    100% {
+        transform: scale(1.1);
+    }
 }
 
 .iot-bin-card.iot-open {
     border-color: #2b8a3e !important;
     background: linear-gradient(135deg, #f0fff4, #d3f9d8) !important;
     box-shadow: 0 0 18px rgba(43, 138, 62, 0.35) !important;
-}
+}
+
+/* ============================================================
+   RESPONSIVE LAYOUTS (Tablet & Desktop)
+   ============================================================ */
+
+/* --- TABLET LAYOUT --- */
+@media (min-width: 640px) and (max-width: 1023px) {
+    body {
+        align-items: center;
+        padding: 20px;
+    }
+
+    .app-container {
+        max-width: 520px;
+        height: calc(100vh - 40px);
+        border-radius: 30px;
+        margin: 0 auto;
+    }
+}
+
+/* --- DESKTOP LAYOUT (2-Column Dashboard) --- */
+@media (min-width: 1024px) {
+    body {
+        align-items: flex-start;
+        justify-content: flex-start;
+        padding: 0;
+        background: #f0f2f5;
+        overflow: auto;
+    }
+
+    .app-container {
+        width: 100vw;
+        max-width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        grid-template-rows: auto 1fr;
+        grid-template-areas:
+            "sidebar header"
+            "sidebar main";
+        box-shadow: none;
+        overflow: hidden;
+    }
+
+    .top-header {
+        grid-area: header;
+        border-radius: 0;
+        padding: 18px 32px;
+        border-left: 1px solid #eee;
+        border-bottom: 1px solid #eee;
+        box-shadow: none;
+    }
+
+    .camera-stage {
+        grid-area: main;
+        padding: 28px 36px;
+        gap: 18px;
+        overflow-y: auto;
+    }
+
+    /* ขยายกล้องให้เป็นแนวนอนบน Desktop */
+    .camera-wrapper {
+        aspect-ratio: 16/9;
+        max-height: 55vh;
+    }
+
+    /* จัดเรียงปุ่มด้านล่างใหม่ */
+    .controls-area {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto;
+        gap: 14px;
+        align-items: end;
+    }
+
+    .score-display-big {
+        grid-column: 1 / -1;
+    }
+
+    .tools-row {
+        grid-column: 1;
+    }
+
+    .btn-main-action {
+        grid-column: 2;
+        width: 200px;
+        height: 58px;
+        font-size: 1rem;
+        margin-top: 0;
+    }
+
+    /* เปลี่ยนเมนูด้านล่างให้เป็น Sidebar ด้านซ้าย */
+    .bottom-nav {
+        grid-area: sidebar;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
+        padding: 0 0 24px 0;
+        width: 260px;
+        height: 100vh;
+        border-top: none;
+        border-right: 1px solid #eee;
+        position: sticky;
+        top: 0;
+        box-shadow: none;
+    }
+
+    .bottom-nav::before {
+        content: '🌿 Smart Waste 2.0';
+        display: block;
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--primary);
+        padding: 24px 20px 20px;
+        border-bottom: 1px solid #eee;
+        margin-bottom: 12px;
+        letter-spacing: .5px;
+    }
+
+    .nav-item {
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 14px;
+        min-width: unset;
+        width: 100%;
+        padding: 14px 20px;
+        border-radius: 0;
+        font-size: .9rem;
+        border-left: 3px solid transparent;
+    }
+
+    .nav-item.active {
+        background: rgba(67, 97, 238, 0.08);
+        border-left-color: var(--primary);
+        border-radius: 0;
+    }
+
+    /* จัด Modal ให้อยู่ตรงกลางหน้าจอบน Desktop */
+    .modal-overlay {
+        align-items: center;
+    }
+
+    .modal-card {
+        border-radius: 30px !important;
+        max-width: 500px;
+    }
+
+    .leaderboard-card,
+    .quests-card,
+    .admin-card,
+    .iot-card {
+        border-radius: 30px !important;
+        max-width: 600px !important;
+        max-height: 85vh;
+    }
+}
+
+/* ============================================================
+   ✨ MISSING ANIMATIONS & MODALS FIX
+   ============================================================ */
+
+/* 1. Login Entrance & Floating Logo */
+.login-box {
+    animation: loginAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.login-logo img {
+    animation: logoFloat 3s ease-in-out infinite;
+}
+
+@keyframes loginAppear {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes logoFloat {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-6px);
+    }
+}
+
+/* 2. Start Camera Button Shimmer & Pulse */
+.btn-main-action {
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-main-action:active {
+    transform: scale(0.97);
+}
+
+.btn-main-action::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transform: skewX(-25deg);
+    animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        left: -100%;
+    }
+
+    60%,
+    100% {
+        left: 160%;
+    }
+}
+
+.scanning-mode {
+    animation: scanPulse 2s ease-in-out infinite !important;
+}
+
+@keyframes scanPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 5px 20px rgba(239, 71, 111, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 10px 35px rgba(239, 71, 111, 0.75);
+    }
+}
+
+/* 3. Result Modal Icon Pop */
+.result-icon-wrapper {
+    animation: resultIconPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes resultIconPop {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* 4. Item Drop Modal UI & Animation (สำคัญมาก) */
+#item-drop-modal .modal-card {
+    border-top-color: #f08c00;
+}
+
+#drop-animation {
+    font-size: 4rem;
+    margin: 10px 0;
+    animation: dropBounce 1s infinite;
+}
+
+@keyframes dropBounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-15px) scale(1.05);
+    }
+}
+
+#drop-name {
+    color: #f08c00;
+    font-weight: 800;
+    font-size: 1.5rem;
+    margin: 10px 0 5px;
+}
+
+#drop-desc {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+}
