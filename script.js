@@ -123,13 +123,15 @@ const textData = {
         appName: "Smart Waste<br>Classifier",
         auth: { title: "Welcome Back", sub: "Sign in to continue", regTitle: "Create Account", regSub: "Join us today" },
         btnStart: "START CAMERA", btnScan: "SCAN OBJECT", loading: "Opening Camera...",
-        analyzing: "Analyzing..."
+        analyzing: "Analyzing...",
+        nav: { home: "Home", rank: "Rank", quest: "Quests", iot: "Smart Bin", stat: "Stats" }
     },
     th: {
         appName: "นักแยกขยะ<br>อัจฉริยะ",
         auth: { title: "ยินดีต้อนรับ", sub: "เข้าสู่ระบบเพื่อใช้งาน", regTitle: "สมัครสมาชิก", regSub: "สร้างบัญชีใหม่" },
         btnStart: "เริ่มเปิดกล้อง", btnScan: "กดเพื่อสแกน", loading: "กำลังเปิดกล้อง...",
-        analyzing: "กำลังวิเคราะห์..."
+        analyzing: "กำลังวิเคราะห์...",
+        nav: { home: "หน้าหลัก", rank: "อันดับ", quest: "ภารกิจ", iot: "Smart Bin", stat: "สถิติ" }
     }
 };
 
@@ -498,6 +500,15 @@ function updateUI(checkLevelUp = false) {
     document.getElementById('btn-lang').innerText = currentLang.toUpperCase();
     document.getElementById('login-lang-btn').innerText = currentLang.toUpperCase();
     document.querySelector('.app-title-login').innerHTML = t.appName;
+
+    // เปลี่ยนภาษาเมนูด้านล่าง
+    if (document.getElementById('txt-nav-home')) {
+        document.getElementById('txt-nav-home').innerText = t.nav.home;
+        document.getElementById('txt-nav-rank').innerText = t.nav.rank;
+        document.getElementById('txt-nav-quest').innerText = t.nav.quest;
+        document.getElementById('txt-nav-iot').innerText = t.nav.iot;
+        document.getElementById('txt-nav-stat').innerText = t.nav.stat;
+    }
 
     const oldRankEl = document.getElementById('user-rank');
     const oldRankName = oldRankEl.innerText;
